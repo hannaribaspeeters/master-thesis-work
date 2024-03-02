@@ -51,7 +51,7 @@ class LogReg(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(ignore=['net'], logger=False)
+        self.save_hyperparameters(ignore=["net"], logger=False)
 
         self.net = net
 
@@ -101,7 +101,7 @@ class LogReg(LightningModule):
         logits = self.forward(batch)
         y = batch["y"]
         loss = self.criterion(logits, y)
-        #preds = torch.argmax(logits, dim=1) # this was not working and removing it fixed stuff but not entirely sure why
+        # preds = torch.argmax(logits, dim=1) # this was not working and removing it fixed stuff but not entirely sure why
         return loss, logits, y
 
     def training_step(

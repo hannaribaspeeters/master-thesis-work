@@ -1,0 +1,3 @@
+loc:
+  _target_: src.data.predictors.loc.LocationPredictor
+  mode: "cyclical_europe"

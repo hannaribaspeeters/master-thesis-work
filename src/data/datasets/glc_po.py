@@ -1,9 +1,10 @@
-import torch
 import pandas as pd
+import torch
+
 
 class GLCPODataset(torch.utils.data.Dataset):
     def __init__(self, predictors, dataset_file_path):
-        self.data = pd.read_csv(dataset_file_path, sep=";", header='infer', low_memory=False)
+        self.data = pd.read_csv(dataset_file_path, sep=";", header="infer", low_memory=False)
         self.predictors = predictors
 
     def sample_location(self, lon, lat, time):

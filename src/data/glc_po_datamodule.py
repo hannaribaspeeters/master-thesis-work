@@ -10,8 +10,8 @@ from src.data.datasets.glc_po import GLCPODataset
 
 
 class GLCPODataModule(LightningDataModule):
-    """`LightningDataModule` for the GLC-PO dataset.
-    A `LightningDataModule` implements 7 key methods:
+    """`LightningDataModule` for the GLC-PO dataset. A `LightningDataModule` implements 7 key
+    methods:
 
     ```python
         def prepare_data(self):
@@ -49,7 +49,7 @@ class GLCPODataModule(LightningDataModule):
     def __init__(
         self,
         dataset_file_path: str = "data/",
-        predictors = None,
+        predictors=None,
         train_val_test_split: Tuple[int, int, int] = (0.85, 0.05, 0.1),
         batch_size: int = 2048,
         num_workers: int = 0,

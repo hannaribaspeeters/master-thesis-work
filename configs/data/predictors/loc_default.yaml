@@ -1,0 +1,3 @@
+loc_default:
+  _target_: src.data.predictors.loc.LocationPredictor
+  mode: "default"
