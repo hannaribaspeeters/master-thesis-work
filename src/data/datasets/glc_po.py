@@ -1,17 +1,14 @@
 import pandas as pd
 import torch
 
+from src.data.datasets.abstract_dataset import AbstractDataset
 
-class GLCPODataset(torch.utils.data.Dataset):
+
+class GLCPODataset(AbstractDataset):
     def __init__(self, predictors, dataset_file_path):
+        super().__init__(predictors)
         self.data = pd.read_csv(dataset_file_path, sep=";", header="infer", low_memory=False)
         self.predictors = predictors
-
-    def sample_location(self, lon, lat, time):
-        sample = dict()
-        for name, pred in self.predictors.items():
-            sample[name] = pred.sample_location(lon, lat, time)
-        return sample
 
     def __len__(self):
         return len(self.data)

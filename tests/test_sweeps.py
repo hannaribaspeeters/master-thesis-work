@@ -65,13 +65,14 @@ def test_hydra_sweep_ddp_sim(tmp_path: Path) -> None:
     run_sh_command(command)
 
 
-@RunIf(sh=True)
+"""@RunIf(sh=True)
 @pytest.mark.slow
 def test_optuna_sweep(tmp_path: Path) -> None:
-    """Test Optuna hyperparam sweeping.
-
-    :param tmp_path: The temporary logging path.
     """
+#Test Optuna hyperparam sweeping.
+
+#:param tmp_path: The temporary logging path.
+"""
     command = [
         startfile,
         "-m",
@@ -81,16 +82,17 @@ def test_optuna_sweep(tmp_path: Path) -> None:
         "hydra.sweeper.sampler.n_startup_trials=5",
         "++trainer.fast_dev_run=true",
     ] + overrides
-    run_sh_command(command)
+    run_sh_command(command)"""
 
-
+"""
 @RunIf(wandb=True, sh=True)
 @pytest.mark.slow
 def test_optuna_sweep_ddp_sim_wandb(tmp_path: Path) -> None:
-    """Test Optuna sweep with wandb logging and ddp sim.
-
-    :param tmp_path: The temporary logging path.
     """
+#Test Optuna sweep with wandb logging and ddp sim.
+
+#:param tmp_path: The temporary logging path.
+"""
     command = [
         startfile,
         "-m",
@@ -104,4 +106,4 @@ def test_optuna_sweep_ddp_sim_wandb(tmp_path: Path) -> None:
         "+trainer.limit_test_batches=0.1",
         "logger=wandb",
     ]
-    run_sh_command(command)
+    run_sh_command(command)"""

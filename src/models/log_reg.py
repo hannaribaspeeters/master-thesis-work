@@ -7,7 +7,7 @@ from torchmetrics.classification.accuracy import Accuracy
 
 
 class LogReg(LightningModule):
-    """Example of a `LightningModule` for MNIST classification.
+    """Example of a `LightningModule` for GLCPO classification.
 
     A `LightningModule` implements 8 key methods:
 
