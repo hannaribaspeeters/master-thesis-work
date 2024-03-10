@@ -69,6 +69,7 @@ class AbstractDataModule(LightningDataModule, ABC):
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
+        self.data_predict: Optional[Dataset] = None
 
         self.batch_size_per_device = batch_size
 
@@ -146,6 +147,19 @@ class AbstractDataModule(LightningDataModule, ABC):
         """
         return DataLoader(
             dataset=self.data_test,
+            batch_size=self.batch_size_per_device,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            shuffle=False,
+        )
+    
+    def predict_dataloader(self) -> DataLoader[Any]:
+        """Create and return the predict dataloader.
+
+        :return: The predict dataloader.
+        """
+        return DataLoader(
+            dataset=self.data_predict,
             batch_size=self.batch_size_per_device,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,

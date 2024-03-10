@@ -15,4 +15,4 @@ class AbstractPredictor(ABC):
         raise NotImplementedError()
 
     def check_bounds(self, lon, lat) -> bool:
-        return (self.bounds["north"] > lat and self.bounds["south"] < lat and self.bounds["east"] > lon and self.bounds["west"] < lon )
+        return (self.bounds["north"] >= lat and self.bounds["south"] <= lat and self.bounds["east"] >= lon and self.bounds["west"] <= lon )

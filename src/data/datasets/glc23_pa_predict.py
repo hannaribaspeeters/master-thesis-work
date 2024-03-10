@@ -1,0 +1,21 @@
+import pandas as pd
+import torch
+import numpy as np
+
+from src.data.datasets.abstract_dataset import AbstractDataset
+
+
+class GLC23PAPredictDataset(AbstractDataset):
+    def __init__(self, predictors, dataset_file_path):
+        super().__init__(predictors)
+        self.data = pd.read_csv(dataset_file_path, sep=";", header="infer", low_memory=False)
+        self.predictors = predictors
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        data_dict = self.data.iloc[idx]
+        lon, lat = tuple(data_dict[["lon", "lat"]].to_numpy())
+        sample = self.sample_location(lon, lat, None)
+        return sample
