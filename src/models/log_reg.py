@@ -170,13 +170,13 @@ class LogReg(LightningModule):
         pass
 
     def predict_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
-        """Perform a single test step on a batch of data from the test set.
+        """Perform a single test step on a batch of data from the hold out set.
 
         :param batch: A batch of data (a tuple) containing the input tensor of images and target
             labels.
         :param batch_idx: The index of the current batch.
         """
-        logits = torch.round(torch.sigmoid(self.forward(batch)))
+        logits = torch.sigmoid(self.forward(batch))
 
         return logits
 

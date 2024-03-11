@@ -1,8 +1,6 @@
 
 import torch
 from lightning.pytorch.callbacks import BasePredictionWriter
-import numpy as np
-import pandas as pd
 import csv
 
 class PredictionWriter(BasePredictionWriter):
@@ -15,20 +13,19 @@ class PredictionWriter(BasePredictionWriter):
         self, trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx
     ):
  
-        nonzero_indices = torch.nonzero(prediction)
         data_to_append = []
         for i, idx in enumerate(batch_indices):
-            # Filter nonzero indices for the current index
-            idx_nonzero_indices = nonzero_indices[nonzero_indices[:, 0] == i]
-            predictions = " ".join(str(int(j)) for j in idx_nonzero_indices[:, 1])
             
-
+            # get top k indices and format correctly
+            top_k_idx = torch.sort(torch.topk(prediction[i], 30, sorted = False)[1])[0]
+            predictions = " ".join(str(int(j)) for j in top_k_idx)
+            
             data_to_append.append([idx+1, predictions])
 
-        # Write data to CSV
+        # write data to CSV
         with open(f"{self.output_dir}/prediction.csv", 'a', newline='') as file:
             writer = csv.writer(file)
             if batch_idx == 0:
-                writer.writerow(["Id", "Prediction"])
+                writer.writerow(["surveyId", "predictions"])
             writer.writerows(data_to_append)
 
