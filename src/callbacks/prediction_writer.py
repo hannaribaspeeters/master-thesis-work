@@ -16,17 +16,17 @@ class PredictionWriter(BasePredictionWriter):
     ):
  
         nonzero_indices = torch.nonzero(prediction)
-
         data_to_append = []
-        for idx in batch_indices:
+        for i, idx in enumerate(batch_indices):
             # Filter nonzero indices for the current index
-            idx_nonzero_indices = nonzero_indices[nonzero_indices[:, 0] == idx]
+            idx_nonzero_indices = nonzero_indices[nonzero_indices[:, 0] == i]
             predictions = " ".join(str(int(j)) for j in idx_nonzero_indices[:, 1])
+            
 
-            data_to_append.append([idx, predictions])
+            data_to_append.append([idx+1, predictions])
 
         # Write data to CSV
-        with open(f"{self.output_dir}prediction.csv", 'a', newline='') as file:
+        with open(f"{self.output_dir}/prediction.csv", 'a', newline='') as file:
             writer = csv.writer(file)
             if batch_idx == 0:
                 writer.writerow(["Id", "Prediction"])
