@@ -1,6 +1,6 @@
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
 
 from src.data.datasets.abstract_dataset import AbstractDataset
 
@@ -9,7 +9,11 @@ class GLC23PADataset(AbstractDataset):
     def __init__(self, predictors, dataset_file_path):
         super().__init__(predictors)
         self.data = pd.read_csv(dataset_file_path, sep=";", header="infer", low_memory=False)
-        self.data = self.data.groupby(["patchID", "dayOfYear","lat", "lon"]).agg({"speciesId": lambda x: list(x)}).reset_index()
+        self.data = (
+            self.data.groupby(["patchID", "dayOfYear", "lat", "lon"])
+            .agg({"speciesId": lambda x: list(x)})
+            .reset_index()
+        )
         self.predictors = predictors
 
     def __len__(self):

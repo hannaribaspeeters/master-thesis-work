@@ -3,7 +3,7 @@ defaults:
       - loc
       - loc_default
 _target_: src.data.glc_po_datamodule.GLCPODataModule
-dataset_file_path: ${paths.data_dir}glc23_data/Presences_only_train.csv 
+dataset_file_path: ${paths.data_dir}glc23_data/Presences_only_train.csv
 batch_size: 2048 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
 train_val_test_split: [0.85, 0.05, 0.1]
 num_workers: 0

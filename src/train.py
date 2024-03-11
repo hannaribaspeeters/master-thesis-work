@@ -106,7 +106,6 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     # merge train and test metrics
     metric_dict = {**train_metrics, **test_metrics}
 
-
     if cfg.get("predict"):
         log.info("Starting predicting!")
         ckpt_path = trainer.checkpoint_callback.best_model_path
@@ -115,7 +114,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
             ckpt_path = None
         trainer.predict(model=model, dataloaders=datamodule, ckpt_path=cfg.ckpt_path)
         log.info(f"Best ckpt path: {ckpt_path}")
-            
+
     return metric_dict, object_dict
 
 

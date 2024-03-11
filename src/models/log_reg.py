@@ -3,8 +3,9 @@ from typing import Any, Dict, Tuple
 import torch
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
-from torchmetrics.classification.accuracy import Accuracy
 from torchmetrics.classification import MulticlassF1Score, MultilabelF1Score
+from torchmetrics.classification.accuracy import Accuracy
+
 
 class LogReg(LightningModule):
     """Example of a `LightningModule` for GLCPO classification.

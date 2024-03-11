@@ -4,9 +4,10 @@ import torch
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
 
 from src.data.abstract_datamodule import AbstractDataModule
-from src.data.datasets.glc_po import GLCPODataset
 from src.data.datasets.glc23_pa import GLC23PADataset
 from src.data.datasets.glc23_pa_predict import GLC23PAPredictDataset
+from src.data.datasets.glc_po import GLCPODataset
+
 
 class GLC23DataModule(AbstractDataModule):
     """`LightningDataModule` for the GLC-PO dataset."""
@@ -37,10 +38,20 @@ class GLC23DataModule(AbstractDataModule):
             pin_memory,
         )
 
-        self.data_train = GLCPODataset(self.hparams.predictors, f"{self.hparams.data_path}Presences_only_train.csv")
-        self.data_val = GLC23PADataset(self.hparams.predictors, f"{self.hparams.data_path}Presence_Absence_surveys/Presences_Absences_train.csv")
-        self.data_predict = GLC23PAPredictDataset(self.hparams.predictors, f"{self.hparams.data_path}For_submission/test_blind.csv")
-        
+        self.data_train = GLCPODataset(
+            self.hparams.predictors, f"{self.hparams.data_path}Presences_only_train.csv"
+        )
+        self.data_val = GLC23PADataset(
+            self.hparams.predictors,
+            f"{self.hparams.data_path}Presence_Absence_surveys/Presences_Absences_train.csv",
+        )
+        self.data_test = GLC23PADataset(
+            self.hparams.predictors,
+            f"{self.hparams.data_path}Presence_Absence_surveys/Presences_Absences_train.csv",
+        )
+        self.data_predict = GLC23PAPredictDataset(
+            self.hparams.predictors, f"{self.hparams.data_path}For_submission/test_blind.csv"
+        )
 
     @property
     def num_classes(self) -> int:

@@ -1,5 +1,5 @@
-from typing import Any, Dict, Optional, Tuple
 from abc import ABC
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from lightning import LightningDataModule
@@ -152,7 +152,7 @@ class AbstractDataModule(LightningDataModule, ABC):
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
         )
-    
+
     def predict_dataloader(self) -> DataLoader[Any]:
         """Create and return the predict dataloader.
 

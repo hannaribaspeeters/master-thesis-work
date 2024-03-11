@@ -4,5 +4,3 @@ prediction_writer:
   _target_: src.callbacks.prediction_writer.PredictionWriter
   output_dir: ${paths.output_dir}
   write_interval: "batch"
-
-  

@@ -1,5 +1,6 @@
 import torch
 
+
 class AbstractDataset(torch.utils.data.Dataset):
     def __init__(self, predictors):
         self.predictors = predictors

@@ -2,13 +2,17 @@
 
 defaults:
   - _self_
-  - data: glc_po # choose datamodule with `test_dataloader()` for evaluation
+  - data: glc23 # choose datamodule with `test_dataloader()` for evaluation
   - model: log_reg
   - logger: null
   - trainer: default
   - paths: default
   - extras: default
   - hydra: default
+
+  # optional local config for machine/user specific settings
+  # it's optional since it doesn't need to exist and is excluded from version control
+  - optional local: default
 
 task_name: "eval"
 
