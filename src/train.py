@@ -112,7 +112,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         if ckpt_path == "":
             log.warning("Best ckpt not found! Using current weights for predicting...")
             ckpt_path = None
-        trainer.predict(model=model, dataloaders=datamodule, ckpt_path=cfg.ckpt_path)
+        trainer.predict(model=model, dataloaders=datamodule, ckpt_path=ckpt_path)
         log.info(f"Best ckpt path: {ckpt_path}")
 
     return metric_dict, object_dict

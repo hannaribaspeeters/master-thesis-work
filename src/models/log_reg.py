@@ -3,8 +3,7 @@ from typing import Any, Dict, Tuple
 import torch
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
-from torchmetrics.classification import MulticlassF1Score, MultilabelF1Score
-from torchmetrics.classification.accuracy import Accuracy
+from torchmetrics.classification import MultilabelF1Score
 
 
 class LogReg(LightningModule):
@@ -60,7 +59,7 @@ class LogReg(LightningModule):
         # Change: criterion becomes its own class that gets passed model and dataset on init
         self.criterion = criterion
 
-        # metric objects for calculating and averaging accuracy across batches
+        # metric objects for calculating and averaging micro F1 across batches
         self.train_f1 = MultilabelF1Score(num_labels=10040, average="micro")
         self.val_f1 = MultilabelF1Score(num_labels=10040, average="micro")
         self.test_f1 = MultilabelF1Score(num_labels=10040, average="micro")
@@ -70,7 +69,7 @@ class LogReg(LightningModule):
         self.val_loss = MeanMetric()
         self.test_loss = MeanMetric()
 
-        # for tracking best so far validation accuracy
+        # for tracking best so far validation F1
         self.val_f1_best = MaxMetric()
 
     def forward(self, batch) -> torch.Tensor:
@@ -99,7 +98,7 @@ class LogReg(LightningModule):
             - A tensor of target labels.
         """
         # Change: we do not expect x to be tensor already, but rather a dict of many modalities
-        logits = torch.sigmoid(self.forward(batch))
+        logits = self.forward(batch)
         y = batch["y"]
         loss = self.criterion(logits, y)
         # preds = torch.argmax(logits, dim=1) # this was not working and removing it fixed stuff but not entirely sure why
@@ -145,9 +144,9 @@ class LogReg(LightningModule):
 
     def on_validation_epoch_end(self) -> None:
         "Lightning hook that is called when a validation epoch ends."
-        f1 = self.val_f1.compute()  # get current val acc
-        self.val_f1_best(f1)  # update best so far val acc
-        # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
+        f1 = self.val_f1.compute()  # get current val f1
+        self.val_f1_best(f1)  # update best so far val f1
+        # log `val_f1_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/f1_best", self.val_f1_best.compute(), sync_dist=True, prog_bar=True)
 
@@ -177,9 +176,9 @@ class LogReg(LightningModule):
             labels.
         :param batch_idx: The index of the current batch.
         """
-        logits = torch.sigmoid(self.forward(batch))
+        logits = self.forward(batch)
 
-        return logits
+        return torch.sigmoid(logits)
 
     def on_predict_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
