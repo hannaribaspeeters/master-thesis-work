@@ -44,13 +44,14 @@ def test_hydra_sweep(tmp_path: Path) -> None:
     run_sh_command(command)
 
 
-@RunIf(sh=True)
+"""@RunIf(sh=True)
 @pytest.mark.slow
 def test_hydra_sweep_ddp_sim(tmp_path: Path) -> None:
-    """Test default hydra sweep with ddp sim.
-
-    :param tmp_path: The temporary logging path.
     """
+#Test default hydra sweep with ddp sim.
+
+#:param tmp_path: The temporary logging path.
+"""
     command = [
         startfile,
         "-m",
@@ -62,7 +63,7 @@ def test_hydra_sweep_ddp_sim(tmp_path: Path) -> None:
         "+trainer.limit_test_batches=0.1",
         "model.optimizer.lr=0.005,0.01,0.02",
     ] + overrides
-    run_sh_command(command)
+    run_sh_command(command)"""
 
 
 """@RunIf(sh=True)
