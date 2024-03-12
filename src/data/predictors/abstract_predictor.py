@@ -1,7 +1,8 @@
+from abc import ABC
+
 import numpy as np
 import torch
 
-from abc import ABC
 
 class AbstractPredictor(ABC):
     def __init__(self, bounds):
@@ -15,4 +16,9 @@ class AbstractPredictor(ABC):
         raise NotImplementedError()
 
     def check_bounds(self, lon, lat) -> bool:
-        return (self.bounds["north"] > lat and self.bounds["south"] < lat and self.bounds["east"] > lon and self.bounds["west"] < lon )
+        return (
+            self.bounds["north"] >= lat
+            and self.bounds["south"] <= lat
+            and self.bounds["east"] >= lon
+            and self.bounds["west"] <= lon
+        )

@@ -1,7 +1,6 @@
 defaults:
   - predictors:
-      - loc
-      - loc_default
+      - loc_cyclical_europe
 _target_: src.data.glc_po_datamodule.GLCPODataModule
 dataset_file_path: "/shares/wegner.ics.uzh/glc23_data/Pot_10_to_1000.csv" # fix this to a more general filepath system in a locals file
 batch_size: 2048 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
