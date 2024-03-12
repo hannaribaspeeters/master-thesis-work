@@ -69,7 +69,7 @@ def test_hydra_sweep_ddp_sim(tmp_path: Path) -> None:
 @pytest.mark.slow
 def test_optuna_sweep(tmp_path: Path) -> None:
     """
-#Test Optuna hyperparam sweeping.
+# Test Optuna hyperparam sweeping.
 
 #:param tmp_path: The temporary logging path.
 """
@@ -89,7 +89,7 @@ def test_optuna_sweep(tmp_path: Path) -> None:
 @pytest.mark.slow
 def test_optuna_sweep_ddp_sim_wandb(tmp_path: Path) -> None:
     """
-#Test Optuna sweep with wandb logging and ddp sim.
+# Test Optuna sweep with wandb logging and ddp sim.
 
 #:param tmp_path: The temporary logging path.
 """

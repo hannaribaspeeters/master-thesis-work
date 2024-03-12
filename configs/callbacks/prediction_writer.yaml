@@ -1,0 +1,6 @@
+# https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.BasePredictionWriter.html
+
+prediction_writer:
+  _target_: src.callbacks.prediction_writer.PredictionWriter
+  output_dir: ${paths.output_dir}
+  write_interval: "batch"

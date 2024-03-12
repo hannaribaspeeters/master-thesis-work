@@ -31,7 +31,15 @@ class LocationPredictor(AbstractPredictor):
             raise ValueError()
 
     def __str__(self):
-        return "Location embedder with mode " + self.mode + " and bounds " + str(self.bounds) + " (strict: " + str(self.strict) + ")"
+        return (
+            "Location embedder with mode "
+            + self.mode
+            + " and bounds "
+            + str(self.bounds)
+            + " (strict: "
+            + str(self.strict)
+            + ")"
+        )
 
     def _normalize_loc_to_uniform(self, lon, lat):
         if self.mode == "cyclical_europe":
