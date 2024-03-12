@@ -1,6 +1,6 @@
 defaults:
   - /criterions@criterion:
-      - cross_entropy_loss
+      - sinr_an_full_europe
 
 _target_: src.models.sinr_module.SINRModule
 

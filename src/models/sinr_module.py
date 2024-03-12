@@ -66,9 +66,12 @@ class SINRModule(LightningModule):
         """
 
         x = []
-        for key, item in batch.items():
-            if key != "y" and len(item.shape) == 2:  # True if predictor is 1-D
-                x.append(item)
+        # We are simply appending all 1-D predictors in the batch_dict
+        # The config is responsible to make sure that input_dim and predictors are set accordingly
+
+        for key, value in batch.items():
+            if key != "y" and len(value.shape) == 2:  # True if predictor is 1-D
+                x.append(value)
         x = torch.concat(x, dim=1)
 
         return self.net(x)

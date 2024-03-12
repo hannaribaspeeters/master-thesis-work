@@ -1,7 +1,7 @@
 # @package _global_
 
 # to execute this experiment run:
-# python train.py experiment=loc_sinr
+# python train.py experiment=loc_env_sinr
 
 defaults:
   - override /data: glc_po
@@ -11,6 +11,7 @@ defaults:
   - override /paths: cluster
   - override /data/predictors:
       - loc_cyclical_europe
+      - bioclim_pointwise_europe
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
@@ -28,7 +29,7 @@ model:
   optimizer:
     lr: 0.0007
   net:
-    input_dim: 4
+    input_dim: 24
   compile: false
 
 data:
