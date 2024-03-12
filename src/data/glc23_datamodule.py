@@ -16,7 +16,6 @@ class GLC23DataModule(AbstractDataModule):
         self,
         data_path: str = "data/",
         predictors=None,
-        train_val_test_split: Tuple[int, int, int] = (0.85, 0.05, 0.1),
         batch_size: int = 2048,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -24,22 +23,19 @@ class GLC23DataModule(AbstractDataModule):
         """Initialize a `GLC23DataModule`.
 
         :param data_dir: The data directory. Defaults to `"data/"`.
-        :param train_val_test_split: The train, validation and test split. Defaults to `(0.85, 0.05, 0.1)`.
         :param batch_size: The batch size. Defaults to `2048`.
         :param num_workers: The number of workers. Defaults to `0`.
         :param pin_memory: Whether to pin memory. Defaults to `False`.
         """
         super().__init__(
-            data_path,
             predictors,
-            train_val_test_split,
             batch_size,
             num_workers,
             pin_memory,
         )
 
         self.data_train = GLCPODataset(
-            self.hparams.predictors, f"{self.hparams.data_path}Presences_only_train.csv"
+            self.hparams.predictors, f"{self.hparams.data_path}Pot_10_to_1000.csv"
         )
         self.data_val = GLC23PADataset(
             self.hparams.predictors,

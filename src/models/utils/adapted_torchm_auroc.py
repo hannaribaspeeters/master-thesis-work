@@ -74,9 +74,7 @@ class AdaptedMultilabelAUROC(MultilabelAUROC):
 
     def compute(self) -> Tensor:  # type: ignore[override]
         """Compute metric."""
-        state = (
-            (dim_zero_cat(self.preds), dim_zero_cat(self.target))
-        )
+        state = (dim_zero_cat(self.preds), dim_zero_cat(self.target))
         return _multilabel_auroc_compute_adapted(
             state, self.num_labels, self.average, self.thresholds, self.ignore_index
         )

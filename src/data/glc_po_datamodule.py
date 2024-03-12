@@ -28,9 +28,7 @@ class GLCPODataModule(AbstractDataModule):
         :param pin_memory: Whether to pin memory. Defaults to `False`.
         """
         super().__init__(
-            dataset_file_path,
             predictors,
-            train_val_test_split,
             batch_size,
             num_workers,
             pin_memory,

@@ -16,9 +16,9 @@ class PointwiseBioclimEuropePredictor(AbstractPredictor):
 
         context_feats = np.load(bioclim_path).astype(np.float32)
         self.raster = torch.from_numpy(context_feats)
-        self.raster[
-            torch.isnan(self.raster)
-        ] = 0.0  # replace with mean value (0 is mean post-normalization)
+        self.raster[torch.isnan(self.raster)] = (
+            0.0  # replace with mean value (0 is mean post-normalization)
+        )
 
         self.strict = True
 

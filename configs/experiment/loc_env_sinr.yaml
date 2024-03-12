@@ -4,7 +4,7 @@
 # python train.py experiment=loc_env_sinr
 
 defaults:
-  - override /data: glc_po
+  - override /data: glc23
   - override /model: sinr
   - override /callbacks: default
   - override /trainer: gpu
@@ -35,7 +35,6 @@ model:
 data:
   batch_size: 2048
   num_workers: 16
-  train_val_test_split: [0.994, 0.001, 0.005]
 
 logger:
   wandb:
