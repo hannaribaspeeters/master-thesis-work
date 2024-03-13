@@ -8,7 +8,6 @@ defaults:
   - override /model: sinr
   - override /callbacks: default
   - override /trainer: gpu
-  - override /paths: cluster
   - override /data/predictors:
       - loc_cyclical_europe
       - bioclim_pointwise_europe
@@ -16,7 +15,7 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["glc_po", "sinr", "loc"]
+tags: ["glc23", "sinr", "loc", "env"]
 
 seed: 12345
 

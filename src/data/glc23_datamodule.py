@@ -35,7 +35,7 @@ class GLC23DataModule(AbstractDataModule):
         )
 
         self.data_train = GLCPODataset(
-            self.hparams.predictors, f"{self.hparams.data_path}Pot_10_to_1000.csv"
+            self.hparams.predictors, f"{self.hparams.data_path}Presences_only_train.csv"
         )
         self.data_val = GLC23PADataset(
             self.hparams.predictors,

@@ -10,7 +10,7 @@ from torchmetrics.classification import (
 )
 
 from src.criterions import abstract_criterion
-from src.models.utils.adapted_torchm_auroc import AdaptedMultilabelAUROC
+from src.utils.adapted_torchm_auroc import AdaptedMultilabelAUROC
 
 
 class SINRModule(LightningModule):

@@ -2,7 +2,7 @@ defaults:
   - predictors:
       - loc_cyclical_europe
 _target_: src.data.glc_po_datamodule.GLCPODataModule
-dataset_file_path: ${paths.data_dir}glc23_data/Pot_10_to_1000.csv
+dataset_file_path: ${paths.data_dir}glc23_data/Presences_only_train.csv
 batch_size: 2048 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
 train_val_test_split: [0.995, 0.001, 0.004]
 num_workers: 0
