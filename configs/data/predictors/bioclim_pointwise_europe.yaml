@@ -1,0 +1,3 @@
+bioclim_pointwise_europe:
+  _target_: src.data.predictors.point_bioclim.PointwiseBioclimEuropePredictor
+  path: ${paths.data_dir}glc23_data/bioclim+elev/bioclim_elevation_scaled_europe.npy

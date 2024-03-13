@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from src.data.predictors.abstract_predictor import AbstractPredictor
+from src.utils.location_transforms import scale_to_new_bounds
 
 
 class LocationPredictor(AbstractPredictor):
@@ -25,7 +26,10 @@ class LocationPredictor(AbstractPredictor):
         if self.mode == "default":
             return torch.tensor([lon, lat], dtype=torch.float32)
         elif self.mode.startswith("cyclical"):
-            lon, lat = self._normalize_loc_to_uniform(lon, lat)
+            # Rescaling to [-1,1] before applying sin/cos
+            lon, lat = scale_to_new_bounds(
+                lon, lat, self.bounds, {"north": 1, "south": -1, "west": -1, "east": 1}
+            )
             return torch.tensor(self._encode_loc(lon, lat), dtype=torch.float32)
         else:
             raise ValueError()
@@ -40,14 +44,6 @@ class LocationPredictor(AbstractPredictor):
             + str(self.strict)
             + ")"
         )
-
-    def _normalize_loc_to_uniform(self, lon, lat):
-        if self.mode == "cyclical_europe":
-            lon = (lon - (-10.53904)) / (34.55792 - (-10.53904))
-            lat = (lat - 34.56858) / (71.18392 - 34.56858)
-        else:
-            raise ValueError
-        return lon, lat
 
     def _encode_loc(self, lon, lat):
         features = [

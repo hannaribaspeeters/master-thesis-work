@@ -3,48 +3,25 @@ from typing import Any, Dict, Tuple
 import torch
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
-from torchmetrics.classification import MultilabelF1Score
+from torchmetrics.classification import (
+    MulticlassF1Score,
+    MultilabelAUROC,
+    MultilabelF1Score,
+)
+
+from src.criterions import abstract_criterion
+from src.utils.adapted_torchm_auroc import AdaptedMultilabelAUROC
 
 
-class LogReg(LightningModule):
-    """Example of a `LightningModule` for GLCPO classification.
-
-    A `LightningModule` implements 8 key methods:
-
-    ```python
-    def __init__(self):
-    # Define initialization code here.
-
-    def setup(self, stage):
-    # Things to setup before each stage, 'fit', 'validate', 'test', 'predict'.
-    # This hook is called on every process when using DDP.
-
-    def training_step(self, batch, batch_idx):
-    # The complete training step.
-
-    def validation_step(self, batch, batch_idx):
-    # The complete validation step.
-
-    def test_step(self, batch, batch_idx):
-    # The complete test step.
-
-    def predict_step(self, batch, batch_idx):
-    # The complete predict step.
-
-    def configure_optimizers(self):
-    # Define and configure optimizers and LR schedulers.
-    ```
-
-    Docs:
-        https://lightning.ai/docs/pytorch/latest/common/lightning_module.html
-    """
+class SINRModule(LightningModule):
+    """SINR implementation using a combinations of all 1-D inputs passed to it."""
 
     def __init__(
         self,
         net: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
-        criterion,
+        criterion: abstract_criterion,
         compile: bool,
     ) -> None:
         super().__init__()
@@ -56,25 +33,47 @@ class LogReg(LightningModule):
         self.net = net
 
         # loss function
-        # Change: criterion becomes its own class that gets passed model and dataset on init
         self.criterion = criterion
 
-        # metric objects for calculating and averaging micro F1 across batches
+        # metric objects for calculating and averaging across batches
         self.train_f1 = MultilabelF1Score(num_labels=10040, average="micro")
         self.val_f1 = MultilabelF1Score(num_labels=10040, average="micro")
         self.test_f1 = MultilabelF1Score(num_labels=10040, average="micro")
+
+        # Had to write an adapted class making use of the weighted functionality to make the metric ignore classes without support in val/test
+        # This was more lightweight than own reimplementation, although now the average="weighted" is slightly unintuitive
+        self.val_auroc_macro = AdaptedMultilabelAUROC(num_labels=10040, average="weighted")
+        self.test_auroc_macro = AdaptedMultilabelAUROC(num_labels=10040, average="weighted")
+
+        self.val_auroc_weighted = MultilabelAUROC(num_labels=10040, average="weighted")
+        self.test_auroc_weighted = MultilabelAUROC(num_labels=10040, average="weighted")
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
         self.test_loss = MeanMetric()
 
-        # for tracking best so far validation F1
+        # for tracking best so far validation accuracy
         self.val_f1_best = MaxMetric()
+        self.val_auroc_macro_best = MaxMetric()
+        self.val_auroc_weighted_best = MaxMetric()
 
     def forward(self, batch) -> torch.Tensor:
-        # Change: we do not expect x to be tensor already, but rather a dict of many modalities
-        x = batch["loc_cyclical_europe"]
+        """Forwarding batch through the network.
+
+        :param batch: Dictionary containing a variety of predictors.
+        :return: a tensor of predictions
+        """
+
+        x = []
+        # We are simply appending all 1-D predictors in the batch_dict
+        # The config is responsible to make sure that input_dim and predictors are set accordingly
+
+        for key, value in batch.items():
+            if key != "y" and len(value.shape) == 2:  # True if predictor is 1-D
+                x.append(value)
+        x = torch.concat(x, dim=1)
+
         return self.net(x)
 
     def on_train_start(self) -> None:
@@ -82,8 +81,9 @@ class LogReg(LightningModule):
         # by default lightning executes validation step sanity checks before training starts,
         # so it's worth to make sure validation metrics don't store results from these checks
         self.val_loss.reset()
-        self.val_f1.reset()
         self.val_f1_best.reset()
+        self.val_auroc_macro_best.reset()
+        self.val_auroc_weighted_best.reset()
 
     def model_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor]
@@ -97,11 +97,10 @@ class LogReg(LightningModule):
             - A tensor of predictions.
             - A tensor of target labels.
         """
-        # Change: we do not expect x to be tensor already, but rather a dict of many modalities
         logits = self.forward(batch)
         y = batch["y"]
         loss = self.criterion(logits, y)
-        # preds = torch.argmax(logits, dim=1) # this was not working and removing it fixed stuff but not entirely sure why
+        y = y.type(torch.int)
         return loss, logits, y
 
     def training_step(
@@ -142,13 +141,40 @@ class LogReg(LightningModule):
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/f1", self.val_f1, on_step=False, on_epoch=True, prog_bar=True)
 
+        self.val_auroc_macro(preds, targets)
+        self.val_auroc_weighted(preds, targets)
+        self.log(
+            "val/auroc_macro", self.val_auroc_macro, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "val/auroc_weighted",
+            self.val_auroc_weighted,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
+
     def on_validation_epoch_end(self) -> None:
         "Lightning hook that is called when a validation epoch ends."
         f1 = self.val_f1.compute()  # get current val f1
         self.val_f1_best(f1)  # update best so far val f1
-        # log `val_f1_best` as a value through `.compute()` method, instead of as a metric object
-        # otherwise metric would be reset by lightning after each epoch
         self.log("val/f1_best", self.val_f1_best.compute(), sync_dist=True, prog_bar=True)
+        auroc_macro = self.val_auroc_macro.compute()
+        self.val_auroc_macro_best(auroc_macro)
+        self.log(
+            "val/auroc_macro_best",
+            self.val_auroc_macro_best.compute(),
+            sync_dist=True,
+            prog_bar=True,
+        )
+        auroc_weighted = self.val_auroc_weighted.compute()
+        self.val_auroc_weighted_best(auroc_weighted)
+        self.log(
+            "val/auroc_weighted_best",
+            self.val_auroc_weighted_best.compute(),
+            sync_dist=True,
+            prog_bar=True,
+        )
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Perform a single test step on a batch of data from the test set.
@@ -165,22 +191,20 @@ class LogReg(LightningModule):
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/f1", self.test_f1, on_step=False, on_epoch=True, prog_bar=True)
 
+        self.test_auroc_macro(preds, targets)
+        self.test_auroc_weighted(preds, targets)
+        self.log(
+            "test/auroc_macro", self.test_auroc_macro, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "test/auroc_weighted",
+            self.test_auroc_weighted,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
+
     def on_test_epoch_end(self) -> None:
-        """Lightning hook that is called when a test epoch ends."""
-        pass
-
-    def predict_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
-        """Perform a single test step on a batch of data from the hold out set.
-
-        :param batch: A batch of data (a tuple) containing the input tensor of images and target
-            labels.
-        :param batch_idx: The index of the current batch.
-        """
-        logits = self.forward(batch)
-
-        return torch.sigmoid(logits)
-
-    def on_predict_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
         pass
 
@@ -221,4 +245,4 @@ class LogReg(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = LogReg(None, None, None, None, None)
+    _ = SINRModule(None, None, None, None, None)

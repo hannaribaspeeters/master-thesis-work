@@ -1,29 +1,33 @@
 # @package _global_
 
 # to execute this experiment run:
-# python train.py experiment=example
+# python train.py experiment=env_sinr
 
 defaults:
-  - override /data: glc_po
-  - override /model: log_reg
+  - override /data: glc23
+  - override /model: sinr
   - override /callbacks: default
   - override /trainer: gpu
+  - override /data/predictors:
+      - bioclim_pointwise_europe
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["glc_po", "log_reg"]
+tags: ["glc23", "sinr", "env"]
 
 seed: 12345
 
 trainer:
   min_epochs: 10
-  max_epochs: 10
-  gradient_clip_val: 0.5
+  max_epochs: 200
+  gradient_clip_val: 0
 
 model:
   optimizer:
-    lr: 0.002
+    lr: 0.0007
+  net:
+    input_dim: 20
   compile: false
 
 data:
@@ -33,6 +37,12 @@ data:
 logger:
   wandb:
     tags: ${tags}
-    group: "glc_po log_reg"
+    group: "glc_po sinr loc"
   aim:
-    experiment: "glc_po log_reg"
+    experiment: "glc_po sinr loc"
+
+callbacks:
+  early_stopping:
+    monitor: "val/f1"
+  model_checkpoint:
+    monitor: "val/f1"
