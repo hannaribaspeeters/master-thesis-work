@@ -63,7 +63,7 @@ class LocationPredictor(AbstractPredictor):
         )
 
     def _sine_cosine_encode(self, lon, lat):
-        """Applies sind cosine transformations as proposed in SINR."""
+        """Applies sine cosine transformations as proposed in SINR."""
         features = [
             np.sin(np.pi * lon),
             np.cos(np.pi * lon),
