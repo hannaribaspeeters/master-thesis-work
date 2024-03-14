@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from src.data.predictors.abstract_predictor import AbstractPredictor
-from src.data.predictors.utils.bilinear_interpolate import bilinear_interpolate
+from src.utils.bilinear_interpolate import bilinear_interpolate
 from src.utils.location_transforms import scale_to_new_bounds
 
 
