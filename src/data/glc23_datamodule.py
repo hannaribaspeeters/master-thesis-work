@@ -7,6 +7,12 @@ from src.data.abstract_datamodule import AbstractDataModule
 from src.data.datasets.glc23_pa import GLC23PADataset
 from src.data.datasets.glc23_pa_predict import GLC23PAPredictDataset
 from src.data.datasets.glc_po import GLCPODataset
+from src.data.datasets.pseudo_absence_datasets.random_location_psab_ds import (
+    RandomLocationDataset,
+)
+from src.data.datasets.pseudo_absence_datasets.sample_wrapper import (
+    PseudoAbsenceSampler,
+)
 
 
 class GLC23DataModule(AbstractDataModule):
@@ -19,6 +25,8 @@ class GLC23DataModule(AbstractDataModule):
         batch_size: int = 2048,
         num_workers: int = 0,
         pin_memory: bool = False,
+        pseudo_absence_num_saved_batches: int = 256,
+        pseudo_absence_sampling_bounds=Dict[str, int],
     ) -> None:
         """Initialize a `GLC23DataModule`.
 
@@ -47,6 +55,15 @@ class GLC23DataModule(AbstractDataModule):
         )
         self.data_predict = GLC23PAPredictDataset(
             self.hparams.predictors, f"{self.hparams.data_path}For_submission/test_blind.csv"
+        )
+
+        pdsb_ds = RandomLocationDataset(
+            bounds=pseudo_absence_sampling_bounds,
+            datamodule=self,
+            num_saved_batches=pseudo_absence_num_saved_batches,
+        )
+        self.pseudo_absence_sampler = PseudoAbsenceSampler(
+            dataset=pdsb_ds, datamodule=self, num_saved_batches=pseudo_absence_num_saved_batches
         )
 
     @property

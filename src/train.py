@@ -84,7 +84,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     # Necessary for losses that do background sampling
     model.criterion.set_model(model)
-    model.criterion.set_dataset(datamodule.data_train)
+    model.criterion.set_datamodule(datamodule)
 
     if cfg.get("train"):
         log.info("Starting training!")
