@@ -1,11 +1,11 @@
 import torch
 
-from src.data.datasets.pseudo_absence_datasets.abstract_psab_dataset import (
-    AbstractPsAbDataset,
+from src.data.datasets.pseudo_absence_datasets.abstract_pseudo_absence_dataset import (
+    AbstractPseudoAbsenceDataset,
 )
 
 
-class RandomLocationDataset(AbstractPsAbDataset):
+class RandomLocationDataset(AbstractPseudoAbsenceDataset):
     """Dataset, that returns random batches."""
 
     def __init__(self, bounds, datamodule, num_saved_batches):

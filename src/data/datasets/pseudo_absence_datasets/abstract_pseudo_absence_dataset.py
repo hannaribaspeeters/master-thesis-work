@@ -6,7 +6,7 @@ from src.data.datasets.abstract_dataset import AbstractDataset
 from src.data.predictors.abstract_predictor import AbstractPredictor
 
 
-class AbstractPsAbDataset(ABC, AbstractDataset):
+class AbstractPseudoAbsenceDataset(ABC, AbstractDataset):
     """Abstract class for pseudo-absence datasets."""
 
     def __init__(self, datamodule: AbstractDataModule, num_saved_batches: int):

@@ -5,8 +5,8 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.data.abstract_datamodule import AbstractDataModule
-from src.data.datasets.pseudo_absence_datasets.abstract_psab_dataset import (
-    AbstractPsAbDataset,
+from src.data.datasets.pseudo_absence_datasets.abstract_pseudo_absence_dataset import (
+    AbstractPseudoAbsenceDataset,
 )
 
 
@@ -17,7 +17,10 @@ class PseudoAbsenceSampler:
     """
 
     def __init__(
-        self, dataset: AbstractPsAbDataset, datamodule: AbstractDataModule, num_saved_batches: int
+        self,
+        dataset: AbstractPseudoAbsenceDataset,
+        datamodule: AbstractDataModule,
+        num_saved_batches: int,
     ):
         """
         :param dataset: Dataset that is being wrapped.
