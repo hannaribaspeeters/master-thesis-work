@@ -7,6 +7,7 @@ defaults:
   - override /data: glc23
   - override /model: sinr
   - override /callbacks: default
+  - override /logger: wandb
   - override /trainer: gpu
   - override /data/predictors:
       - bioclim_pointwise_europe
@@ -38,8 +39,7 @@ logger:
   wandb:
     tags: ${tags}
     group: "glc_po sinr loc"
-  aim:
-    experiment: "glc_po sinr loc"
+    name: "env_sinr"
 
 callbacks:
   early_stopping:
