@@ -35,7 +35,6 @@ class PointwiseBioclimEuropePredictor(AbstractPredictor):
         lon, lat = scale_to_new_bounds(
             lon, lat, self.bounds, {"north": 1, "south": -1, "west": -1, "east": 1}
         )
-        print(lon, lat)
 
         vals = bilinear_interpolate(torch.tensor([[lon, lat]]), self.raster)
         return vals.flatten().type(torch.half)
