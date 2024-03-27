@@ -1,0 +1,5 @@
+# @package criterions
+_target_: src.criterions.sinr_loss.SinrANFull_weighted
+
+pos_weight: 2048
+freq_to_weight_method: null

@@ -26,7 +26,7 @@ class SinrResidualBlock(nn.Module):
         :param x: The input tensor.
         :return: A tensor of predictions.
         """
-        return self.layers(x)
+        return self.layers(x) + x
 
 
 class SinrNet(nn.Module):

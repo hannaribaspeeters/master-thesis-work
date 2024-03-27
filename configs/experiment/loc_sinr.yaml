@@ -7,7 +7,6 @@ defaults:
   - override /data: glc23
   - override /model: sinr
   - override /callbacks: default
-  - override /logger: wandb
   - override /trainer: gpu
   - override /data/predictors:
       - loc_cyclical_europe
