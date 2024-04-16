@@ -3,6 +3,7 @@ defaults:
       - loc_cyclical_europe
 _target_: src.data.glc23_datamodule.GLC23DataModule
 data_path: ${paths.data_dir}glc23_data/
+file_path: "Presences_only_train.csv"
 batch_size: 2048 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
 num_workers: 0
 pin_memory: False

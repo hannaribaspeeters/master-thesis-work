@@ -20,6 +20,7 @@ class GLC23DataModule(AbstractDataModule):
     def __init__(
         self,
         data_path: str = "data/",
+        file_path: str = "",
         predictors=None,
         batch_size: int = 2048,
         num_workers: int = 0,
@@ -75,7 +76,8 @@ class GLC23DataModule(AbstractDataModule):
 
         # Load the training data
         self.data_train = GLCPODataset(
-            self.hparams.predictors, f"{self.hparams.data_path}Presences_only_train.csv"
+            self.hparams.predictors,
+            f"{self.hparams.data_path}{self.hparams.file_path}"
         )
         
         # Filter the training data by removing instances of species with less than a certain threshold of occurrences
