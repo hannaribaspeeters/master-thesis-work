@@ -7,7 +7,6 @@ defaults:
   - override /data: glc23
   - override /model: sinr
   - override /callbacks: default
-  - override /logger: wandb
   - override /trainer: gpu
   - override /data/predictors:
       - loc_cyclical_europe
@@ -17,7 +16,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 tags: ["glc23", "sinr", "loc", "env"]
-
+name: loc_env
 seed: 12345
 
 trainer:
@@ -31,12 +30,13 @@ model:
   net:
     input_dim: 24
   compile: false
+  results_file_name: null
 
 logger:
   wandb:
     tags: ${tags}
     group: "glc_po sinr loc"
-    name: "loc_env_sinr"
+    name: ${name}_spatial_${data.spatial_thinning}_wrs_${data.weighted_random_sampler}
 
 data:
   batch_size: 2048

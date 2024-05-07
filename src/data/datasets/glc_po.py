@@ -3,7 +3,6 @@ import torch
 
 from src.data.datasets.abstract_dataset import AbstractDataset
 
-
 class GLCPODataset(AbstractDataset):
     def __init__(self, predictors, dataset_file_path):
         super().__init__(predictors)
@@ -18,6 +17,6 @@ class GLCPODataset(AbstractDataset):
         lon, lat = tuple(data_dict[["lon", "lat"]].to_numpy())
         sample = self.sample_location(lon, lat, None)
         y = torch.zeros(10040)
-        y[data_dict["speciesId"]] = 1
+        y[data_dict["speciesId"].astype(int)] = 1
         sample["y"] = y
         return sample

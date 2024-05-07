@@ -15,7 +15,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 tags: ["glc23", "sinr", "loc"]
-
+name: loc
 seed: 12345
 
 trainer:
@@ -29,6 +29,7 @@ model:
   net:
     input_dim: 4
   compile: false
+  results_file_name: null
 
 data:
   batch_size: 2048
@@ -38,7 +39,7 @@ logger:
   wandb:
     tags: ${tags}
     group: "glc_po sinr loc"
-    name: "loc_sinr"
+    name: ${name}_spatial_${data.spatial_thinning}_dist_${data.thin_dist}_cutoff_${data.majority_cutoff}_wrs_${data.weighted_random_sampler}
 
 callbacks:
   early_stopping:
