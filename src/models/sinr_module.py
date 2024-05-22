@@ -44,15 +44,38 @@ class SINRModule(LightningModule):
         # metric objects for calculating and averaging across batches
         self.train_f1 = MultilabelF1Score(num_labels=10040, average="micro")
         self.val_f1 = MultilabelF1Score(num_labels=10040, average="micro")
-        self.test_f1 = MultilabelF1Score(num_labels=10040, average="macro")
-        self.test_f1_multilabel = MultilabelF1Score(num_labels=10040, average=None)
+        self.test_f1_micro = MultilabelF1Score(
+            num_labels=10040,
+            average="micro"
+        )
+        self.test_f1_macro = MultilabelF1Score(
+            num_labels=10040,
+            average="macro"
+        )
+        self.test_f1_multilabel = MultilabelF1Score(
+            num_labels=10040,
+            average=None
+        )
+
         # Had to write an adapted class making use of the weighted functionality to make the metric ignore classes without support in val/test
         # This was more lightweight than own reimplementation, although now the average="weighted" is slightly unintuitive
-        self.val_auroc_macro = AdaptedMultilabelAUROC(num_labels=10040, average="weighted")
-        self.test_auroc_macro = AdaptedMultilabelAUROC(num_labels=10040, average="weighted")
+        self.test_auroc_macro = AdaptedMultilabelAUROC(
+            num_labels=10040,
+            average="weighted"
+        )
+        self.test_auroc_weighted = MultilabelAUROC(
+            num_labels=10040,
+            average="weighted"
+        )
 
-        self.val_auroc_weighted = MultilabelAUROC(num_labels=10040, average="weighted")
-        self.test_auroc_weighted = MultilabelAUROC(num_labels=10040, average="weighted")
+        self.val_auroc_weighted = MultilabelAUROC(
+            num_labels=10040,
+            average="weighted"
+        )
+        self.val_auroc_macro = AdaptedMultilabelAUROC(
+            num_labels=10040,
+            average="weighted"
+        )
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -87,6 +110,7 @@ class SINRModule(LightningModule):
         # so it's worth to make sure validation metrics don't store results from these checks
         self.val_loss.reset()
         self.val_f1_best.reset()
+        
         self.val_auroc_macro_best.reset()
         self.val_auroc_weighted_best.reset()
 
@@ -169,7 +193,7 @@ class SINRModule(LightningModule):
         self.log(
             "val/auroc_macro_best",
             self.val_auroc_macro_best.compute(),
-            sync_dist=True,
+           sync_dist=True,
             prog_bar=True,
         )
         auroc_weighted = self.val_auroc_weighted.compute()
@@ -192,7 +216,9 @@ class SINRModule(LightningModule):
 
         # update and log metrics
         self.test_loss(loss)
-        self.test_f1(preds, targets)
+        self.test_f1_micro(preds, targets)
+        self.test_f1_macro(preds, targets)
+
         if batch_idx == 0:
             self.preds_epoch = preds
             self.targets_epoch = targets
@@ -201,24 +227,25 @@ class SINRModule(LightningModule):
             self.targets_epoch = torch.cat((self.targets_epoch, targets), dim=0)
 
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/f1", self.test_f1, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/f1 micro", self.test_f1_micro, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/f1 macro", self.test_f1_macro, on_step=False, on_epoch=True, prog_bar=True)
 
-        #self.test_auroc_macro(preds, targets)
-        #self.test_auroc_weighted(preds, targets)
-        #self.log(
-        #   "test/auroc_macro",
-        #   self.test_auroc_macro,
-        #   on_step=False,
-        #    on_epoch=True,
-        #    prog_bar=True
-        #)
-        #self.log(
-        #    "test/auroc_weighted",
-        #    self.test_auroc_weighted,
-        #    on_step=False,
-        #    on_epoch=True,
-        #   prog_bar=True,
-        #)
+        self.test_auroc_macro(preds, targets)
+        self.test_auroc_weighted(preds, targets)
+        self.log(
+           "test/auroc_macro",
+           self.test_auroc_macro,
+           on_step=False,
+            on_epoch=True,
+            prog_bar=True
+        )
+        self.log(
+            "test/auroc_weighted",
+            self.test_auroc_weighted,
+            on_step=False,
+            on_epoch=True,
+           prog_bar=True,
+        )
 
     def calculate_multilabel_f1(self, preds, target, ids, average="micro"):
         ids_tensor = torch.tensor(ids).to(preds.device)
@@ -242,6 +269,16 @@ class SINRModule(LightningModule):
 
     def on_test_epoch_end(self) -> None:
 
+        metrics = {
+            "loss": self.test_loss.compute(),
+            "f1 micro": self.test_f1_micro.compute(), 
+            "f1 macro": self.test_f1_macro.compute(),
+            "auroc_weighted": self.test_auroc_weighted.compute(),
+            "auroc_macro": self.test_auroc_macro.compute()
+        }
+        metrics_table = wandb.Table(data=pd.DataFrame(metrics, index=[0]))
+        wandb.log({f'test/metrics': metrics_table})
+
         if self.hparams.results_file_name is not None:
             output_dir = "/data/jribas/sdm_sandbox/test"
             path = os.path.join(output_dir, f'preds_{self.hparams.results_file_name}.pt')
@@ -249,26 +286,28 @@ class SINRModule(LightningModule):
             path = os.path.join(output_dir, f'targets_{self.hparams.results_file_name}.pt')
             torch.save(self.targets_epoch, path)
 
-            # calculate species_counts
-        species_counts = self.trainer.datamodule.data_train.data["speciesId"].value_counts()
+        # species counts before any preprocessing of the data
+        species_counts = self.trainer.datamodule.data_train.species_counts
 
         # calculate and log segregated F1 scores
-        bins = [0, 20, 40, 60, 80, 100, 500, 1000, 5000]
+        bins = [0, 20, 60, 100, 500, 1000, 5000]
         macro_summary, counts = self.segregated_f1(self.preds_epoch, self.targets_epoch, species_counts, bins, average="macro")
         # log the summaries as tables in Weights & Biases
         macro_df = pd.DataFrame(macro_summary, index=[0])
-        macro_df["counts"] = counts
-        macro_table = wandb.Table(dataframe=macro_df)
-        wandb.log({f'macro_f1_per_group': macro_table})
+        macro_per_group_table = wandb.Table(dataframe=macro_df)
+        counts_table = wandb.Table(data=pd.DataFrame(counts, index=[0]))
 
+        wandb.log({f'counts_per_group': counts_table})
+        wandb.log({f'macro_f1_per_group': macro_per_group_table})
+
+        # log the f1 per group to facilitate creating barplots in wandb
         for group, f1 in macro_summary.items():
-                    wandb.log({f'micro_f1_{group}': f1})
+            wandb.log({f'macro_f1_{group}': f1})
 
-        micro_summary, counts = self.segregated_f1(self.preds_epoch, self.targets_epoch, species_counts, bins, average="micro")
+        micro_summary, _ = self.segregated_f1(self.preds_epoch, self.targets_epoch, species_counts, bins, average="micro")
         micro_df = pd.DataFrame(micro_summary, index=[0])
-        micro_df["counts"] = counts
-        micro_table = wandb.Table(dataframe=micro_df)
-        wandb.log({f'micro_f1_per_group': micro_table})
+        micro_per_group_table = wandb.Table(dataframe=micro_df)
+        wandb.log({f'micro_f1_per_group': micro_per_group_table})
 
         for group, f1 in micro_summary.items():
             wandb.log({f'micro_f1_{group}': f1})

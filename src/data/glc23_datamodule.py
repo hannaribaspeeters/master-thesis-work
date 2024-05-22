@@ -18,9 +18,9 @@ from src.data.datasets.pseudo_absence_datasets.sample_wrapper import (
 from src.utils.grid_thinning.thinning_strategies import (
     thin_all_species,
     thin_majority_species,
-    thin_majority_minority_species
+    thin_majority_minority_species,
+    thin_bioclim_all_species
 )
-
 from time import time
 
 class GLC23DataModule(AbstractDataModule):
@@ -41,6 +41,8 @@ class GLC23DataModule(AbstractDataModule):
         majority_cutoff = 100,
         thin_dist: float=1,
         weighted_random_sampler = None, #None, "inverse_counts", "inverse_cluster_density"
+        input_noise=None, 
+        input_noise_var= False
     ) -> None:
         
         """Initialize a `GLC23DataModule`.
@@ -59,8 +61,6 @@ class GLC23DataModule(AbstractDataModule):
             num_workers,
             pin_memory,
         )
-
-        self.weighted_random_sampler = weighted_random_sampler
 
         self.data_val = GLC23PADataset(
             self.hparams.predictors,
@@ -85,6 +85,9 @@ class GLC23DataModule(AbstractDataModule):
             num_saved_batches=pseudo_absence_num_saved_batches
         )
 
+        self.weighted_random_sampler = weighted_random_sampler
+
+
     def setup(self, stage: Optional[str] = None) -> None:
         
         super().setup(stage)  # Call setup method of the parent class
@@ -94,52 +97,67 @@ class GLC23DataModule(AbstractDataModule):
         # Load the training data
         self.data_train = GLCPODataset(
             self.hparams.predictors,
-            f"{self.hparams.data_path}{self.hparams.file_path}"
+            f"{self.hparams.data_path}{self.hparams.file_path}",
+            input_noise=self.hparams.input_noise,
+            input_noise_var=self.hparams.input_noise_var
         )
-
-        if self.hparams.spatial_thinning=="thin_all":
-            self.data_train.data, _ = thin_all_species(
-                df=self.data_train.data, 
-                thin_dist=self.hparams.thin_dist
-                )
-            
-        elif self.hparams.spatial_thinning=="thin_majority":
-            self.data_train.data, _ = thin_majority_species(
-                df=self.data_train.data, 
-                thin_dist=self.hparams.thin_dist,
-                majority_cutoff=self.hparams.majority_cutoff
-            )
-
-        elif self.hparams.spatial_thinning is None: 
-            pass
-
-        else: 
-            print("Invalid value for spatial_thinning argument. Options are : 'thin_all', 'thin_majority', None")
-
-        # Filter the training data by removing instances of species with less than a certain threshold of occurrences
-        species_counts = self.data_train.data["speciesId"].value_counts()
-        filtered_species = species_counts[
-            species_counts >= self.hparams.species_count_threshold
-            ].index.tolist()
-        self.data_train.data = self.data_train.data[
-            self.data_train.data["speciesId"].isin(filtered_species)
-            ].copy()
-        
-        # Calculate and store the count of each species and the number of unique locations in the training data
-        self.data_train.species_counts = species_counts
+        self.data_train.species_counts = self.data_train.data["speciesId"]\
+            .value_counts()
         self.data_train.n_locations = len(
             self.data_train.data.drop_duplicates(subset=["lon", "lat"])
             )
-        
-        print(f"Completed setting up the data in {np.round(time()-timer, 4)} s.")
-
+            
         if stage == "fit":
+            
+            # THINNING 
+            # 3D Spatial thinning
+            if self.hparams.spatial_thinning=="thin_all":
+                self.data_train.data, _ = thin_all_species(
+                    df=self.data_train.data, 
+                    thin_dist=self.hparams.thin_dist
+                )   
+            elif self.hparams.spatial_thinning=="thin_majority":
+                self.data_train.data, _ = thin_majority_species(
+                    df=self.data_train.data, 
+                    thin_dist=self.hparams.thin_dist,
+                    majority_cutoff=self.hparams.majority_cutoff
+                )
+            # 20D Bioclimatic thinning
+            elif self.hparams.spatial_thinning=="thin_bioclimatic":
+                self.data_train.data, _ = thin_bioclim_all_species(
+                    dataset=self.data_train,
+                    thin_dist=self.hparams.thin_dist,
+                    save=True
+                )
+            elif self.hparams.spatial_thinning is None: 
+                pass
+            else: 
+                print("Invalid value for spatial_thinning argument. Options are\
+                       : 'thin_all', 'thin_majority', thin_bioclimatic")
+            
+            # Filter the training data by removing instances of species with less than a certain threshold of occurrences
+            processed_species_counts = self.data_train.data["speciesId"].\
+                value_counts()
+            filtered_species = processed_species_counts[
+                processed_species_counts >= self.hparams.species_count_threshold
+            ].index.tolist()
+            self.data_train.data = self.data_train.data[
+                self.data_train.data["speciesId"].isin(filtered_species)
+            ].copy()
+
+            # Calculate and store the count of each species and the number of unique locations in the training data
+            
+            print(f"Completed setting up the data in {np.round(time()-timer, 4)} s.")
+
+            # CREATE A WEIGHTED RANDOM SAMPLER FOR TRAINING
+
             if self.weighted_random_sampler == "inverse_counts":
-                # Create a weighted random sampler for training, where each sample's weight is the inverse of its species' count
+                # Each sample's weight is the inverse of its species' count
                 sample_weights = [
-                    1/species_counts[i] for i in\
+                    1/np.sqrt(processed_species_counts[i]) for i in\
                     self.data_train.data["speciesId"].values
-                    ]
+                ]
+                
                 self.weighted_random_sampler = WeightedRandomSampler(
                 weights=sample_weights,
                 num_samples=len(self.data_train.data),
@@ -147,6 +165,9 @@ class GLC23DataModule(AbstractDataModule):
                 )
                 
             elif self.weighted_random_sampler == "inverse_cluster_density":
+                # Each sample's weight is the inverse of its species' count
+                # after thinning de data divided by the density of the sample's cluster
+
                 data = self.data_train.data
                 sampled_data, cluster_density = thin_all_species(
                     data, 
@@ -170,7 +191,7 @@ class GLC23DataModule(AbstractDataModule):
                 cluster_density = data["cluster_density"].values
                 assert(len(class_weights)==len(cluster_density))
 
-                sample_weights = class_weights/cluster_density
+                sample_weights = np.sqrt(class_weights/cluster_density)
 
                 self.weighted_random_sampler = WeightedRandomSampler(
                 weights=sample_weights,
@@ -178,6 +199,9 @@ class GLC23DataModule(AbstractDataModule):
                 replacement=True
                 )
             
+            elif self.weighted_random_sampler is None: 
+                pass
+
     # Overriding the train_dataloader method to incorporate the sampler parameter
     def train_dataloader(self):
         # Determine whether to reshuffle the data at every epoch based on whether a sampling strategy is defined
@@ -190,7 +214,7 @@ class GLC23DataModule(AbstractDataModule):
                 shuffle=shuffle,
                 sampler=self.weighted_random_sampler
             )
-    
+
     @property
     def num_classes(self) -> int:
         """Get the number of classes.

@@ -15,3 +15,5 @@ species_count_threshold: 10
 majority_cutoff: 100
 thin_dist: 1
 weighted_random_sampler: null #None, "inverse_counts", "inverse_cluster_density"
+input_noise: null
+input_noise_var: False

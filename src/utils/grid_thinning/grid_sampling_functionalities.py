@@ -5,8 +5,8 @@ import pandas as pd
 import numpy as np
 
 
-class GridSampling3D:
-    """ Clusters 3D points into voxels with size :attr:`size`.
+class GridSampling:
+    """ Clusters points into voxels with size :attr:`size`.
 
     By default, only the last-encountered element of each voxel will be
     kept.
@@ -20,10 +20,11 @@ class GridSampling3D:
         Keep to False for deterministic results.
     """
 
-    def __init__(self, size, shuffle=False):
+    def __init__(self, size, dim, shuffle=False):
         self.grid_size = size
         # shuffle to avoid that the same point is picked every time I run the script
         self.shuffle = shuffle
+        self.dim = dim
 
     @property
     def _repr_dict(self):
@@ -47,7 +48,7 @@ class GridSampling3D:
         # Match each point with a voxel identifier
         # desfa el 3D i dona només un identifier per voxel (i ens és igual l'ordre)
         # de cada voxel es queda només amb l'últim punt
-        cluster = grid_cluster(coords, torch.ones(3, device=coords.device))
+        cluster = grid_cluster(coords, torch.ones(self.dim, device=coords.device))
 
         # Reindex the clusters to make sure the indices used are
         # consecutive. Basically, we do not want cluster indices to span
@@ -57,7 +58,6 @@ class GridSampling3D:
         cluster, unique_pos_indices = consecutive_cluster(cluster)
         
         cluster_unique_counts = cluster.unique(return_counts=True)[1]
-
         cluster_ordered_counts = [cluster_unique_counts[i].item() for i in cluster]
 
         # Use unique_pos_indices to pick values from a single point
@@ -77,10 +77,6 @@ def spherical_to_cartesian(lon, lat, radius_earth):
     return x, y, z
 
 def sample_data(data, grid_size, radius_earth=6371):
-    # Load the dataset using pd.read_csv()
-    #dataset = pd.read_csv(csv_file, sep=";")
-    #data = dataset[dataset["speciesid"]==speciesid].copy()
-    
     # Extract longitude and latitude from the DataFrame
     lon = data['lon'].values
     lat = data['lat'].values
@@ -93,10 +89,22 @@ def sample_data(data, grid_size, radius_earth=6371):
     )
     
     # Apply grid sampling
-    sampler = GridSampling3D(grid_size)
+    sampler = GridSampling(grid_size, dim=3)
     sampled_data_indices, cluster_density = sampler(coordinates)
-    
-    #data["cluster_density"] = cluster_density
     sampled_data = data.iloc[sampled_data_indices].copy()
 
+    return sampled_data, cluster_density
+
+def sample_bioclim_data(dataset, speciesid, grid_size):
+
+    species_data = dataset.data[dataset.data["speciesId"]==speciesid]
+    indices = species_data.index
+    bioclim_tensors = [dataset[i]["bioclim_pointwise_europe"] for i in indices]
+    coordinates = torch.stack(bioclim_tensors, dim=0)
+
+    # Apply grid sampling
+    sampler = GridSampling(grid_size, dim=20)
+    sampled_data_indices, cluster_density = sampler(coordinates)
+    sampled_data = species_data.iloc[sampled_data_indices].copy()
+    
     return sampled_data, cluster_density

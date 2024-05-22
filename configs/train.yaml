@@ -27,7 +27,7 @@ defaults:
   # debugging config (enable through command line, e.g. `python train.py debug=default)
   - debug: null
 
-  - override criterions@model.criterion: sinr_an_full_europe_weighted.yaml
+  #- override criterions@model.criterion: sinr_an_full_europe_weighted.yaml
 
 # task name, determines output directory path
 task_name: "train"

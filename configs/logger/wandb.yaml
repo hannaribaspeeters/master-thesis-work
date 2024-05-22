@@ -14,3 +14,4 @@ wandb:
   group: ""
   tags: ["glc23", "sinr", "loc"]
   job_type: ""
+  name: null

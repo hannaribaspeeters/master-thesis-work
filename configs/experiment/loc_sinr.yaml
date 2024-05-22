@@ -39,7 +39,20 @@ logger:
   wandb:
     tags: ${tags}
     group: "glc_po sinr loc"
-    name: ${name}_spatial_${data.spatial_thinning}_dist_${data.thin_dist}_cutoff_${data.majority_cutoff}_wrs_${data.weighted_random_sampler}
+
+    # if baseline model
+    #name: ${name}_baseline
+    # if  thinning
+    # name: ${name}_spatial_${data.spatial_thinning}_dist_${data.thin_dist}
+    # if majority spatial thinning
+    # name: ${name}_spatial_${data.spatial_thinning}_dist_${data.thin_dist}_cutoff_${data.majority_cutoff}
+    # if weighted random sampler
+    #name: ${name}_wrs_${data.weighted_random_sampler}_noise_${data.input_noise}
+    # if input noise
+    #name: ${name}_noise_${data.input_noise}
+    #name: ${name}_smote
+    # if weigthed loss
+    name: ${name}_wl_${criterion.freq_to_weight_method}
 
 callbacks:
   early_stopping:
