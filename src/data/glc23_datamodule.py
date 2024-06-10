@@ -39,10 +39,11 @@ class GLC23DataModule(AbstractDataModule):
         species_count_threshold: int = 10,
         spatial_thinning = None, # None, "thin_all", "thin_majority"
         majority_cutoff = 100,
-        thin_dist: float=1,
+        thin_dist: float = 1,
         weighted_random_sampler = None, #None, "inverse_counts", "inverse_cluster_density"
-        input_noise=None, 
-        input_noise_var= False
+        input_noise = None, 
+        input_noise_var= False,
+        eps = 0
     ) -> None:
         
         """Initialize a `GLC23DataModule`.
@@ -101,11 +102,6 @@ class GLC23DataModule(AbstractDataModule):
             input_noise=self.hparams.input_noise,
             input_noise_var=self.hparams.input_noise_var
         )
-        self.data_train.species_counts = self.data_train.data["speciesId"]\
-            .value_counts()
-        self.data_train.n_locations = len(
-            self.data_train.data.drop_duplicates(subset=["lon", "lat"])
-            )
             
         if stage == "fit":
             
@@ -131,22 +127,24 @@ class GLC23DataModule(AbstractDataModule):
                 )
             elif self.hparams.spatial_thinning is None: 
                 pass
-            else: 
-                print("Invalid value for spatial_thinning argument. Options are\
-                       : 'thin_all', 'thin_majority', thin_bioclimatic")
+            else:
+                raise ValueError(
+                    "Invalid value for 'spatial_thinning'. Expected one of\
+                    ['thin_all', 'thin_majority', 'thin_bioclimatic', None]."
+                    ) 
             
-            # Filter the training data by removing instances of species with less than a certain threshold of occurrences
-            processed_species_counts = self.data_train.data["speciesId"].\
-                value_counts()
-            filtered_species = processed_species_counts[
-                processed_species_counts >= self.hparams.species_count_threshold
-            ].index.tolist()
-            self.data_train.data = self.data_train.data[
-                self.data_train.data["speciesId"].isin(filtered_species)
-            ].copy()
-
-            # Calculate and store the count of each species and the number of unique locations in the training data
+            species_counts = self.data_train.data["speciesId"].value_counts()
             
+            if self.hparams.species_count_threshold>0:
+                # Filter the training data by removing instances of species with
+                # less than a certain threshold of occurrences
+                filtered_species = species_counts[
+                    species_counts >= self.hparams.species_count_threshold
+                ].index.tolist()
+                self.data_train.data = self.data_train.data[
+                    self.data_train.data["speciesId"].isin(filtered_species)
+                ].copy()
+                            
             print(f"Completed setting up the data in {np.round(time()-timer, 4)} s.")
 
             # CREATE A WEIGHTED RANDOM SAMPLER FOR TRAINING
@@ -154,8 +152,8 @@ class GLC23DataModule(AbstractDataModule):
             if self.weighted_random_sampler == "inverse_counts":
                 # Each sample's weight is the inverse of its species' count
                 sample_weights = [
-                    1/np.sqrt(processed_species_counts[i]) for i in\
-                    self.data_train.data["speciesId"].values
+                    1/(np.sqrt(species_counts[i]) + self.hparams.eps)\
+                    for i in self.data_train.data["speciesId"].values
                 ]
                 
                 self.weighted_random_sampler = WeightedRandomSampler(
@@ -175,8 +173,8 @@ class GLC23DataModule(AbstractDataModule):
                 )
                 sampled_species_counts = sampled_data["speciesId"].value_counts()
                 class_weights =  [
-                    1/sampled_species_counts[i] for i in\
-                    self.data_train.data["speciesId"].values
+                    1/(np.sqrt(sampled_species_counts[i]) + self.hparams.eps)\
+                    for i in self.data_train.data["speciesId"].values
                 ]
                 assert(len(data)==len(cluster_density))
                 assert(len(set(data.index)-set(cluster_density.index))==0)
@@ -202,6 +200,18 @@ class GLC23DataModule(AbstractDataModule):
             elif self.weighted_random_sampler is None: 
                 pass
 
+            else:
+                raise ValueError(
+                    "Invalid value for 'weighted_random_sampler'.Expected one\
+                    of ['inverse_counts', 'inverse_cluster_density', None]."
+                    )
+
+        self.data_train.species_counts = self.data_train.data["speciesId"]\
+        .value_counts()
+        self.data_train.n_locations = len(
+            self.data_train.data.drop_duplicates(subset=["lon", "lat"])
+            )
+        
     # Overriding the train_dataloader method to incorporate the sampler parameter
     def train_dataloader(self):
         # Determine whether to reshuffle the data at every epoch based on whether a sampling strategy is defined

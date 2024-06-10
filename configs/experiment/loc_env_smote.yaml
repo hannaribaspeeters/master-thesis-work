@@ -10,12 +10,14 @@ defaults:
   - override /trainer: gpu
   - override /data/predictors:
       - loc_cyclical_europe
+      - bioclim_pointwise_europe
+
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["glc23", "sinr", "loc"]
-name: loc
+tags: ["glc23", "sinr", "loc", "env", "smote"]
+name: loc_env
 seed: 12345
 
 trainer:
@@ -33,12 +35,13 @@ model:
 data:
   batch_size: 2048
   num_workers: 16
+  file_path: smote_data/smote.csv # smote_data/smote.csv, smote_data/smotetomek.csv
 
 logger:
   wandb:
     tags: ${tags}
     group: "glc_po sinr loc"
-    name: ${name}_baseline_threshold_${data.species_count_threshold}
+    name: ${name}_${data.file_path}
 
 callbacks:
   early_stopping:

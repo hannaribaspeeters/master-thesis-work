@@ -21,7 +21,7 @@ seed: 12345
 
 trainer:
   min_epochs: 10
-  max_epochs: 200
+  max_epochs: 65
   gradient_clip_val: 0
 
 model:
@@ -30,24 +30,12 @@ model:
   net:
     input_dim: 24
   compile: false
-  results_file_name: null
 
 logger:
   wandb:
     tags: ${tags}
     group: "glc_po sinr loc"
-
-    # if baseline model
-    #name: ${name}_baseline
-    # if  thinning
-    #name: ${name}_spatial_${data.spatial_thinning}_dist_${data.thin_dist}
-    # if majority spatial thinning
-    # name: ${name}_spatial_${data.spatial_thinning}_dist_${data.thin_dist}_cutoff_${data.majority_cutoff}
-    # if weighted random sampler
-    #name: ${name}_wrs_${data.weighted_random_sampler}_dist_${data.thin_dist}_noise_${data.input_noise}
-    # if input noise
-    #name: ${name}_noise_${data.input_noise}
-    #name: ${name}_smote
+    name: ${name}_baseline_threshold_${data.species_count_threshold}
 
 data:
   batch_size: 2048

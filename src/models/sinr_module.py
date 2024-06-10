@@ -17,6 +17,7 @@ import os
 import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
+from itertools import chain
 
 class SINRModule(LightningModule):
     """SINR implementation using a combinations of all 1-D inputs passed to it."""
@@ -28,7 +29,6 @@ class SINRModule(LightningModule):
         scheduler: torch.optim.lr_scheduler,
         criterion: abstract_criterion,
         compile: bool,
-        results_file_name=None
     ) -> None:
         super().__init__()
 
@@ -113,6 +113,7 @@ class SINRModule(LightningModule):
         
         self.val_auroc_macro_best.reset()
         self.val_auroc_weighted_best.reset()
+        self.log("train/dataset size", len(self.trainer.datamodule.data_train.data))
 
     def model_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor]
@@ -269,8 +270,15 @@ class SINRModule(LightningModule):
 
     def on_test_epoch_end(self) -> None:
 
+        #val_ids = self.trainer.datamodule.data_test.data["speciesId"].unique()
+        val_ids = list(set(chain.from_iterable(self.trainer.datamodule.data_test.data["speciesId"])))
+        val_micro_f1 = self.calculate_multilabel_f1(self.preds_epoch, self.targets_epoch, val_ids, average="micro")
+        val_macro_f1 = self.calculate_multilabel_f1(self.preds_epoch, self.targets_epoch, val_ids, average="macro")
+
         metrics = {
             "loss": self.test_loss.compute(),
+            "f1 micro targeted": val_micro_f1, 
+            "f1 macro targeted": val_macro_f1,
             "f1 micro": self.test_f1_micro.compute(), 
             "f1 macro": self.test_f1_macro.compute(),
             "auroc_weighted": self.test_auroc_weighted.compute(),
@@ -279,18 +287,12 @@ class SINRModule(LightningModule):
         metrics_table = wandb.Table(data=pd.DataFrame(metrics, index=[0]))
         wandb.log({f'test/metrics': metrics_table})
 
-        if self.hparams.results_file_name is not None:
-            output_dir = "/data/jribas/sdm_sandbox/test"
-            path = os.path.join(output_dir, f'preds_{self.hparams.results_file_name}.pt')
-            torch.save(self.preds_epoch, path)
-            path = os.path.join(output_dir, f'targets_{self.hparams.results_file_name}.pt')
-            torch.save(self.targets_epoch, path)
-
         # species counts before any preprocessing of the data
         species_counts = self.trainer.datamodule.data_train.species_counts
 
         # calculate and log segregated F1 scores
-        bins = [0, 20, 60, 100, 500, 1000, 5000]
+        # I changed the edge from 1000 to 999 so that when capping at 1000, there is a distinction between 500-999 and 1000 (which acumulates all the most frequent)
+        bins = [0, 10, 20, 60, 100, 500, 1001, 5000]
         macro_summary, counts = self.segregated_f1(self.preds_epoch, self.targets_epoch, species_counts, bins, average="macro")
         # log the summaries as tables in Weights & Biases
         macro_df = pd.DataFrame(macro_summary, index=[0])

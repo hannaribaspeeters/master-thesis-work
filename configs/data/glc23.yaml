@@ -10,10 +10,11 @@ pin_memory: False
 pseudo_absence_sampling_bounds:
   { "north": 71.18392, "south": 34.56858, "west": -10.53904, "east": 34.55792 }
 pseudo_absence_num_saved_batches: 256
+species_count_threshold: 0
 spatial_thinning : null # None, "thin_all", "thin_majority"
-species_count_threshold: 10
-majority_cutoff: 100
-thin_dist: 1
+thin_dist: null
+majority_cutoff: null
 weighted_random_sampler: null #None, "inverse_counts", "inverse_cluster_density"
 input_noise: null
 input_noise_var: False
+eps: 0
