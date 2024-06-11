@@ -29,22 +29,22 @@ model:
   optimizer:
     lr: 0.0007
   net:
-    input_dim: 4
+    input_dim: 24
   compile: false
 
 data:
   batch_size: 2048
   num_workers: 16
   weighted_random_sampler: inverse_counts #inverse_counts, inverse_cluster_density
-  species_count_threshold: 10
+  species_count_threshold: 0
   thin_dist: 2
   eps: 10
 
 logger:
   wandb:
     tags: ${tags}
-    group: "glc_po sinr loc"
-    name: ${name}_wrs_${data.weighted_random_sampler}_noise_${data.input_noise}
+    group: "loc_env_weighted_sampling"
+    name: ${name}_wrs_${data.weighted_random_sampler}_eps_${data.eps}_noise_${data.input_noise}
 
 
 callbacks:

@@ -36,7 +36,7 @@ class GLC23DataModule(AbstractDataModule):
         pin_memory: bool = False, 
         pseudo_absence_num_saved_batches: int = 256,
         pseudo_absence_sampling_bounds = Dict[str, int],
-        species_count_threshold: int = 10,
+        species_count_threshold: int = 0,
         spatial_thinning = None, # None, "thin_all", "thin_majority"
         majority_cutoff = 100,
         thin_dist: float = 1,
@@ -173,7 +173,7 @@ class GLC23DataModule(AbstractDataModule):
                 )
                 sampled_species_counts = sampled_data["speciesId"].value_counts()
                 class_weights =  [
-                    1/(np.sqrt(sampled_species_counts[i]) + self.hparams.eps)\
+                    1/(np.sqrt(sampled_species_counts[i]*species_counts[i]) + self.hparams.eps)\
                     for i in self.data_train.data["speciesId"].values
                 ]
                 assert(len(data)==len(cluster_density))
@@ -186,10 +186,10 @@ class GLC23DataModule(AbstractDataModule):
                     left_index=True,
                     right_index=True
                 )
-                cluster_density = data["cluster_density"].values
-                assert(len(class_weights)==len(cluster_density))
+                cluster_density_values = data["cluster_density"].values
+                assert(len(class_weights)==len(cluster_density_values))
 
-                sample_weights = np.sqrt(class_weights/cluster_density)
+                sample_weights = class_weights/cluster_density_values
 
                 self.weighted_random_sampler = WeightedRandomSampler(
                 weights=sample_weights,
