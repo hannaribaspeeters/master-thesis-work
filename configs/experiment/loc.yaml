@@ -39,7 +39,6 @@ logger:
     tags: ${tags}
     group: "loc"
     name: ${name}_baseline_ds_${data.file_path}
-
 callbacks:
   early_stopping:
     monitor: "val/f1"

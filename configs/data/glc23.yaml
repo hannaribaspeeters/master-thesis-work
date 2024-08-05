@@ -16,5 +16,4 @@ thin_dist: null
 majority_cutoff: null
 weighted_random_sampler: null #None, "inverse_counts", "inverse_cluster_density"
 input_noise: null
-input_noise_var: False
 eps: 0

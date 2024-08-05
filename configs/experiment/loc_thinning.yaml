@@ -40,7 +40,7 @@ logger:
   wandb:
     tags: ${tags}
     group: "loc_thinning"
-    name: ${name}_${data.spatial_thinning}_dist_${data.thin_dist}
+    name: ${name}_${data.spatial_thinning}_dist_${data.thin_dist}_${data.majority_cutoff}
     
 callbacks:
   early_stopping:

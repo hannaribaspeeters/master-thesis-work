@@ -5,7 +5,6 @@ import pandas as pd
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification import (
-    MulticlassF1Score,
     MultilabelAUROC,
     MultilabelF1Score,
 )
@@ -29,6 +28,7 @@ class SINRModule(LightningModule):
         scheduler: torch.optim.lr_scheduler,
         criterion: abstract_criterion,
         compile: bool,
+        threshold: float
     ) -> None:
         super().__init__()
 
@@ -41,30 +41,27 @@ class SINRModule(LightningModule):
         # loss function
         self.criterion = criterion
 
+        print(f"used threshold: {self.hparams.threshold}")
         # metric objects for calculating and averaging across batches
-        self.train_f1_micro = MultilabelF1Score(
-            num_labels=10040,
-            average="micro"
-        )
-        self.train_f1_macro = MultilabelF1Score(
-            num_labels=10040,
-            average="macro"
-        )
         self.val_f1_micro = MultilabelF1Score(
             num_labels=10040,
-            average="micro"
+            average="micro",
+            threshold=self.hparams.threshold
         )
         self.val_f1_macro = MultilabelF1Score(
             num_labels=10040,
-            average="macro"
+            average="macro",
+            threshold=self.hparams.threshold
         )
         self.test_f1_micro = MultilabelF1Score(
             num_labels=10040,
-            average="micro"
+            average="micro", 
+            threshold=self.hparams.threshold
         )
         self.test_f1_macro = MultilabelF1Score(
             num_labels=10040,
-            average="macro"
+            average="macro", 
+            threshold=self.hparams.threshold,
         )
 
         # Had to write an adapted class making use of the weighted 
@@ -80,11 +77,11 @@ class SINRModule(LightningModule):
             average="weighted"
         )
         
-        self.test_auroc_macro = AdaptedMultilabelAUROC(
+        self.test_auroc_weighted = MultilabelAUROC(
             num_labels=10040,
             average="weighted"
         )
-        self.test_auroc_weighted = MultilabelAUROC(
+        self.test_auroc_macro = AdaptedMultilabelAUROC(
             num_labels=10040,
             average="weighted"
         )
@@ -107,7 +104,8 @@ class SINRModule(LightningModule):
         """
         x = []
         # We are simply appending all 1-D predictors in the batch_dict
-        # The config is responsible to make sure that input_dim and predictors are set accordingly
+        # The config is responsible to make sure that input_dim and predictors
+        # are set accordingly
 
         for key, value in batch.items():
             if key != "y" and len(value.shape) == 2:  # True if predictor is 1-D
@@ -118,8 +116,9 @@ class SINRModule(LightningModule):
 
     def on_train_start(self) -> None:
         """Lightning hook that is called when training begins."""
-        # by default lightning executes validation step sanity checks before training starts,
-        # so it's worth to make sure validation metrics don't store results from these checks
+        # by default lightning executes validation step sanity checks before
+        # training starts, so it's worth to make sure validation metrics don't
+        # store results from these checks
         self.val_loss.reset()
         self.val_f1_best.reset()
         
@@ -151,7 +150,8 @@ class SINRModule(LightningModule):
     def training_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
-        """Perform a single training step on a batch of data from the training set.
+        """Perform a single training step on a batch of data from the training
+        set.
 
         :param batch: x.
         :param batch_idx: The index of the current batch.
@@ -161,9 +161,12 @@ class SINRModule(LightningModule):
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_f1_micro(preds, targets)
-        self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/f1 micro", self.train_f1_micro, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "train/loss",
+            self.train_loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True)
 
         # return loss or backpropagation will fail
         return loss
@@ -172,7 +175,11 @@ class SINRModule(LightningModule):
         "Lightning hook that is called when a training epoch ends."
         pass
 
-    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+    def validation_step(
+            self,
+            batch: Tuple[torch.Tensor, torch.Tensor],
+            batch_idx: int
+            ) -> None:
         """Perform a single validation step on a batch of data from the validation set.
 
         :param batch: x.
@@ -183,13 +190,28 @@ class SINRModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_f1_micro(preds, targets)
-        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/f1", self.val_f1_micro, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "val/loss",
+            self.val_loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True
+            )
+        self.log(
+            "val/f1",
+            self.val_f1_micro,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True)
 
         self.val_auroc_macro(preds, targets)
         self.val_auroc_weighted(preds, targets)
         self.log(
-            "val/auroc_macro", self.val_auroc_macro, on_step=False, on_epoch=True, prog_bar=True
+            "val/auroc_macro",
+            self.val_auroc_macro,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True
         )
         self.log(
             "val/auroc_weighted",
@@ -203,7 +225,13 @@ class SINRModule(LightningModule):
         "Lightning hook that is called when a validation epoch ends."
         f1 = self.val_f1_micro.compute()  # get current val f1
         self.val_f1_best(f1)  # update best so far val f1
-        self.log("val/f1_best", self.val_f1_best.compute(), sync_dist=True, prog_bar=True)
+        self.log(
+            "val/f1_best",
+            self.val_f1_best.compute(),
+            sync_dist=True,
+            prog_bar=True
+        )
+
         auroc_macro = self.val_auroc_macro.compute()
         self.val_auroc_macro_best(auroc_macro)
         self.log(
@@ -212,6 +240,7 @@ class SINRModule(LightningModule):
             sync_dist=True,
             prog_bar=True,
         )
+
         auroc_weighted = self.val_auroc_weighted.compute()
         self.val_auroc_weighted_best(auroc_weighted)
         self.log(
@@ -221,13 +250,18 @@ class SINRModule(LightningModule):
             prog_bar=True,
         )
 
-    def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+    def test_step(
+            self, 
+            batch: Tuple[torch.Tensor, torch.Tensor],
+            batch_idx: int
+        ) -> None:
         """Perform a single test step on a batch of data from the test set.
 
         :param batch: A batch of data (a tuple) containing the input tensor of images and target
             labels.
         :param batch_idx: The index of the current batch.
         """
+
         loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
@@ -242,16 +276,35 @@ class SINRModule(LightningModule):
             self.preds_epoch = torch.cat((self.preds_epoch, preds), dim=0)
             self.targets_epoch = torch.cat((self.targets_epoch, targets), dim=0)
 
-        self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/f1 micro", self.test_f1_micro, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/f1 macro", self.test_f1_macro, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "test/loss",
+            self.test_loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True
+        )
+        self.log(
+            "test/f1 micro",
+            self.test_f1_micro,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True
+        )
+        self.log(
+            "test/f1 macro",
+            self.test_f1_macro,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True
+        )
 
         self.test_auroc_macro(preds, targets)
         self.test_auroc_weighted(preds, targets)
+
         self.log(
-           "test/auroc_macro",
-           self.test_auroc_macro,
-           on_step=False,
+            "test/auroc_macro",
+            self.test_auroc_macro,
+            on_step=False,
             on_epoch=True,
             prog_bar=True
         )
@@ -268,8 +321,11 @@ class SINRModule(LightningModule):
         ids_tensor = torch.tensor(ids).to(preds.device)
         selected_preds = preds[:, ids_tensor]
         selected_targets = target[:, ids_tensor]
-        f1_multilabel = MultilabelF1Score(num_labels=len(ids), average=average)\
-            .to(preds.device)
+        f1_multilabel = MultilabelF1Score(
+            num_labels=len(ids),
+            average=average,
+            threshold=self.hparams.threshold
+            ).to(preds.device)
         return f1_multilabel(selected_preds, selected_targets)
     
     def compute_multilabel_auroc(self, preds, target, ids, method="macro"):
@@ -287,8 +343,11 @@ class SINRModule(LightningModule):
         return auroc(selected_preds, selected_targets)
 
     def segregated_f1(self, preds, target, species_counts, bins, average="micro"):
-        grouped_species_ids = pd.cut(species_counts, bins=bins, labels=[f'{start}-{end}' for start, end in zip(bins[:-1], bins[1:])])
-        test_ids = list(set(chain.from_iterable(self.trainer.datamodule.data_test.data["speciesId"])))
+        grouped_species_ids = pd.cut(species_counts, bins=bins,\
+                                    labels=[f'{start}-{end}' for start,\
+                                    end in zip(bins[:-1], bins[1:])])
+        test_ids = list(set(chain.from_iterable(self.trainer.datamodule.\
+                                                data_test.data["speciesId"])))
 
         ids_dic = {}
         for bin in grouped_species_ids.unique():
@@ -308,7 +367,8 @@ class SINRModule(LightningModule):
         return summary, train_counts, test_counts
     
     def segregated_auroc(self, preds, target, species_counts, bins, method="macro"):
-        grouped_species_ids = pd.cut(species_counts, bins=bins, labels=[f'{start}-{end}' for start, end in zip(bins[:-1], bins[1:])])
+        grouped_species_ids = pd.cut(species_counts, bins=bins,\
+        labels=[f'{start}-{end}' for start, end in zip(bins[:-1], bins[1:])])
 
         ids_dic = {}
         for bin in grouped_species_ids.unique():
@@ -326,50 +386,94 @@ class SINRModule(LightningModule):
 
     def on_test_epoch_end(self) -> None:
 
-        #val_ids = self.trainer.datamodule.data_test.data["speciesId"].unique()
-        test_ids = list(set(chain.from_iterable(self.trainer.datamodule.data_test.data["speciesId"])))
-        test_micro_f1 = self.compute_multilabel_f1(self.preds_epoch, self.targets_epoch, test_ids, average="micro")
-        test_macro_f1 = self.compute_multilabel_f1(self.preds_epoch, self.targets_epoch, test_ids, average="macro")
-
-        metrics = {
-            "loss": self.test_loss.compute(),
-            "f1 micro": test_micro_f1, 
-            "f1 macro": test_macro_f1,
-            "auroc_weighted": self.test_auroc_weighted.compute(),
-            "auroc_macro": self.test_auroc_macro.compute()
+        val_metrics = {
+            "loss": self.val_loss.compute(),
+            "f1": self.val_f1_best.compute()*100, 
+            "auroc_weighted": self.val_auroc_weighted_best.compute()*100,
+            "auroc_macro": self.val_auroc_macro_best.compute()*100
         }
 
-        metrics_table = wandb.Table(data=pd.DataFrame(metrics, index=[0]))
-        wandb.log({f'test/metrics': metrics_table})
+        test_ids = list(set(chain.from_iterable(self.trainer.\
+                    datamodule.data_test.data["speciesId"])))
+        test_micro_f1 = self.compute_multilabel_f1(
+            self.preds_epoch,
+            self.targets_epoch,
+            test_ids,
+            average="micro"
+        )
+        test_macro_f1 = self.compute_multilabel_f1(
+            self.preds_epoch,
+            self.targets_epoch,
+            test_ids,
+            average="macro"
+        )
+
+        test_metrics = {
+            "loss": self.test_loss.compute(),
+            "f1 micro": test_micro_f1*100, 
+            "f1 macro": test_macro_f1*100,
+            "auroc_weighted": self.test_auroc_weighted.compute()*100,
+            "auroc_macro": self.test_auroc_macro.compute()*100
+        }
+
+        val_metrics_table = wandb.Table(data=pd.DataFrame(val_metrics, index=[0]))
+        test_metrics_table = wandb.Table(data=pd.DataFrame(test_metrics, index=[0]))
+        
+        wandb.log({f'val/metrics': val_metrics_table})
+        wandb.log({f'test/metrics': test_metrics_table})
 
         # species counts before any preprocessing of the data
         species_counts = self.trainer.datamodule.data_train.species_counts
 
-        # calculate and log segregated F1 scores
-        # I changed the edge from 1000 to 999 so that when capping at 1000, there is a distinction between 500-999 and 1000 (which acumulates all the most frequent)
-        bins = [0, 10, 20, 60, 100, 500, 1001, 5000]
-        macro_summary, train_counts, test_counts = self.segregated_f1(self.preds_epoch, self.targets_epoch, species_counts, bins, average="macro")
+        # calculate and log segregated F1 scores per group of species
+        # according to their representation in the training set
+        bins = [0, 10, 20, 60, 100, 500, 1000, 5000]
+        macro_summary, train_counts, test_counts = self.segregated_f1(
+            self.preds_epoch,
+            self.targets_epoch,
+            species_counts,
+            bins,
+            average="macro"
+        )
         # log the summaries as tables in Weights & Biases
         macro_df = pd.DataFrame(macro_summary, index=[0])
         macro_per_group_table = wandb.Table(dataframe=macro_df)
         train_counts_table = wandb.Table(data=pd.DataFrame(train_counts, index=[0]))
         test_counts_table = wandb.Table(data=pd.DataFrame(test_counts, index=[0]))
 
-        wandb.log({f'test/counts_per_group (train)': train_counts_table})
-        wandb.log({f'test/counts_per_group': test_counts_table})
+        wandb.log({f'test/counts_per_group(train)': train_counts_table})
+        wandb.log({f'test/counts_per_group(test)': test_counts_table})
         wandb.log({f'test/macro_f1_per_group': macro_per_group_table})
 
-        micro_summary, _, _ = self.segregated_f1(self.preds_epoch, self.targets_epoch, species_counts, bins, average="micro")
+        micro_summary, _, _ = self.segregated_f1(
+            self.preds_epoch,
+            self.targets_epoch,
+            species_counts,
+            bins,
+            average="micro"
+        )
         micro_df = pd.DataFrame(micro_summary, index=[0])
         micro_per_group_table = wandb.Table(dataframe=micro_df)
         wandb.log({f'test/micro_f1_per_group': micro_per_group_table})
 
-        auroc_macro_summary, _ = self.segregated_auroc(self.preds_epoch, self.targets_epoch, species_counts, bins, method="macro")
+        auroc_macro_summary, _ = self.segregated_auroc(
+            self.preds_epoch,
+            self.targets_epoch,
+            species_counts,
+            bins,
+            method="macro"
+        )
         auroc_macro_df = pd.DataFrame(auroc_macro_summary, index=[0])
         auroc_macro_per_group_table = wandb.Table(dataframe=auroc_macro_df)
         wandb.log({f'test/macro_auroc_per_group': auroc_macro_per_group_table})
 
-        auroc_weighted_summary, _ = self.segregated_auroc(self.preds_epoch, self.targets_epoch, species_counts, bins, method="weighted")
+        auroc_weighted_summary, _ = self.segregated_auroc(
+            self.preds_epoch,
+            self.targets_epoch,
+            species_counts,
+            bins,
+            method="weighted"
+        )
         auroc_weighted_df = pd.DataFrame(auroc_weighted_summary, index=[0])
         auroc_weighted_per_group_table = wandb.Table(dataframe=auroc_weighted_df)
         wandb.log({f'test/weighted_auroc_per_group': auroc_weighted_per_group_table})

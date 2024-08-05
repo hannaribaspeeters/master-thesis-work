@@ -3,10 +3,11 @@ from typing import Any, Dict, Optional, Tuple
 import torch
 import pandas as pd
 import numpy as np
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader, WeightedRandomSampler, random_split
 
 from src.data.abstract_datamodule import AbstractDataModule
 from src.data.datasets.glc23_pa import GLC23PADataset
+from src.data.datasets.glc24_pa import GLC24PADataset
 from src.data.datasets.glc23_pa_predict import GLC23PAPredictDataset
 from src.data.datasets.glc_po import GLCPODataset
 from src.data.datasets.pseudo_absence_datasets.random_location_psab_ds import (
@@ -37,13 +38,12 @@ class GLC23DataModule(AbstractDataModule):
         pseudo_absence_num_saved_batches: int = 256,
         pseudo_absence_sampling_bounds = Dict[str, int],
         species_count_threshold: int = 0,
-        spatial_thinning = None, # None, "thin_all", "thin_majority"
+        spatial_thinning = None,
         majority_cutoff = 100,
         thin_dist: float = 1,
-        weighted_random_sampler = None, #None, "inverse_counts", "inverse_cluster_density"
+        weighted_random_sampler = None,
         input_noise = None, 
-        input_noise_var= False,
-        eps = 0
+        eps = 0,
     ) -> None:
         
         """Initialize a `GLC23DataModule`.
@@ -63,14 +63,16 @@ class GLC23DataModule(AbstractDataModule):
             pin_memory,
         )
 
-        self.data_val = GLC23PADataset(
-            self.hparams.predictors,
-            f"{self.hparams.data_path}Presence_Absence_surveys/Presences_Absences_train.csv",
-        )
         self.data_test = GLC23PADataset(
             self.hparams.predictors,
-            f"{self.hparams.data_path}Presence_Absence_surveys/Presences_Absences_train.csv",
+            f"{self.hparams.data_path}Presence_Absence_surveys/Presences_Absences_train-test.csv",
         )
+
+        self.data_val = GLC23PADataset(
+            self.hparams.predictors,
+            f"{self.hparams.data_path}Presence_Absence_surveys/Presences_Absences_train-val.csv",
+        )
+
         self.data_predict = GLC23PAPredictDataset(
             self.hparams.predictors, f"{self.hparams.data_path}For_submission/test_blind.csv"
         )
@@ -98,9 +100,8 @@ class GLC23DataModule(AbstractDataModule):
         # Load the training data
         self.data_train = GLCPODataset(
             self.hparams.predictors,
-            f"{self.hparams.data_path}{self.hparams.file_path}",
+            f"{self.hparams.data_path}processed_po_data/{self.hparams.file_path}",
             input_noise=self.hparams.input_noise,
-            input_noise_var=self.hparams.input_noise_var
         )
             
         if stage == "fit":
@@ -136,8 +137,8 @@ class GLC23DataModule(AbstractDataModule):
             species_counts = self.data_train.data["speciesId"].value_counts()
             
             if self.hparams.species_count_threshold>0:
-                # Filter the training data by removing instances of species with
-                # less than a certain threshold of occurrences
+                # Filter the training data by removing instances of species
+                # with less than a certain threshold of occurrences
                 filtered_species = species_counts[
                     species_counts >= self.hparams.species_count_threshold
                 ].index.tolist()
@@ -145,7 +146,8 @@ class GLC23DataModule(AbstractDataModule):
                     self.data_train.data["speciesId"].isin(filtered_species)
                 ].copy()
                             
-            print(f"Completed setting up the data in {np.round(time()-timer, 4)} s.")
+            print(f"Completed setting up the data in \
+                  {np.round(time()-timer, 4)} s.")
 
             # CREATE A WEIGHTED RANDOM SAMPLER FOR TRAINING
 
@@ -163,18 +165,21 @@ class GLC23DataModule(AbstractDataModule):
                 )
                 
             elif self.weighted_random_sampler == "inverse_cluster_density":
-                # Each sample's weight is the inverse of its species' count
-                # after thinning de data divided by the density of the sample's cluster
+                # Each sample's weight is the inverse of its species count
+                # after thinning de data divided by the density of the sample's
+                # cluster
 
                 data = self.data_train.data
                 sampled_data, cluster_density = thin_all_species(
                     data, 
                     thin_dist=self.hparams.thin_dist
                 )
-                sampled_species_counts = sampled_data["speciesId"].value_counts()
+                sampled_species_counts = sampled_data["speciesId"].\
+                    value_counts()
                 class_weights =  [
-                    1/(np.sqrt(sampled_species_counts[i]*species_counts[i]) + self.hparams.eps)\
-                    for i in self.data_train.data["speciesId"].values
+                    1/(np.sqrt(sampled_species_counts[i]*species_counts[i]) +\
+                    self.hparams.eps) for i in self.data_train.\
+                    data["speciesId"].values
                 ]
                 assert(len(data)==len(cluster_density))
                 assert(len(set(data.index)-set(cluster_density.index))==0)
@@ -212,9 +217,10 @@ class GLC23DataModule(AbstractDataModule):
             self.data_train.data.drop_duplicates(subset=["lon", "lat"])
             )
         
-    # Overriding the train_dataloader method to incorporate the sampler parameter
+    # Overriding the train_dataloader method to incorporate the sampler 
     def train_dataloader(self):
-        # Determine whether to reshuffle the data at every epoch based on whether a sampling strategy is defined
+        # Determine whether to reshuffle the data at every epoch based
+        # on whether a sampling strategy is defined
         shuffle = self.weighted_random_sampler is None
         return DataLoader(
                 dataset=self.data_train,
